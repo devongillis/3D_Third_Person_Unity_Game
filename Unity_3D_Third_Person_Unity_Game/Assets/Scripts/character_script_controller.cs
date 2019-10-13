@@ -10,9 +10,14 @@ public class character_script_controller : MonoBehaviour
 
 	private Animator anim;
 	private float speed = 0.0f;
-	public float interval = 0.001f;
+	public float animMoveSpeed = 0.0f;
+	public float animDeltaSpeed = 0.01f;
+	public float animIdleSpeed = 0.0f;
+	public float animWalkSpeed = 0.6f;
+	public float animRunSpeed = 1.0f;
+	//public float interval = 0.001f;
 
-	protected CharacterState characterState = CharacterState.STATIONARY;
+	public CharacterState characterState = CharacterState.STATIONARY;
 
 	public float walkSpeed = 2;
 	public float runSpeed = 6;
@@ -36,7 +41,7 @@ public class character_script_controller : MonoBehaviour
 	public float initialJumpVelocity = 1.0f;
 	public float initialHighJumpVelocity = 1.0f;
 	public Vector2 initialLongJumpVelocity = new Vector2(1.0f, 1.0f); // length and height
-
+	public float jumpDirectionalMomentumDecay = 0.99f;
 
 	// input variables
 	Vector2 input;
@@ -56,7 +61,7 @@ public class character_script_controller : MonoBehaviour
 		distToGround = GetComponent<Collider>().bounds.extents.y;
 
 		anim = gameObject.GetComponentInChildren<Animator>();
-		anim.SetFloat("speed", speed);
+		anim.SetFloat("speed", animIdleSpeed);
     }
 
     // Update is called once per frame
@@ -92,13 +97,13 @@ public class character_script_controller : MonoBehaviour
 			RunningState();
 		}
 		else if(characterState == CharacterState.JUMPING_LOW){
-			RegularJump();
+			LowJumpingState();
 		}
 		else if(characterState == CharacterState.JUMPING_LONG){
-			LongJump();
+			LongJumpingState();
 		}
 		else if(characterState == CharacterState.JUMPING_HIGH){
-			HighJump();
+			HighJumpingState();
 		}
 		else if(characterState == CharacterState.FALLING){
 			
@@ -112,7 +117,7 @@ public class character_script_controller : MonoBehaviour
 	void StationaryState(){
 		// this function is called if player originally is in the stationary state
 		// from the stationary state our character can enter a running or jumping state
-
+		rb.velocity = Vector3.zero;
 		if (input != Vector2.zero) {
 			Debug.Log("input");
 			// must exit the stationary state
@@ -128,13 +133,22 @@ public class character_script_controller : MonoBehaviour
 			// now determine what kind of jump
 			if(specialJump > 0){
 				// since we are in the stationary state we will do a high jump
-				characterState = CharacterState.JUMPING_HIGH;
+				HighJump();
 			}
 			else{
-				characterState = CharacterState.JUMPING_LOW;
+				RegularJump();
 			}
 		}
 		// if no input was registered we remain in the stationary state, and animation will reflect that
+
+		if(animMoveSpeed < animIdleSpeed){
+			animMoveSpeed += animDeltaSpeed;
+		}
+		else{
+			animMoveSpeed -= animDeltaSpeed;
+		}
+
+		anim.SetFloat("speed", animMoveSpeed);
 	}
 
 	void RunningState(){
@@ -143,48 +157,119 @@ public class character_script_controller : MonoBehaviour
 			float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
 			transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
 		}
+		else{
+			characterState = CharacterState.STATIONARY;
+		}
 
 		float targetSpeed = ((running) ? runSpeed : walkSpeed) * input.magnitude;
 		currentSpeed = Mathf.SmoothDamp (currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
 
 		transform.Translate (transform.forward * currentSpeed * Time.deltaTime, Space.World);
-		/*
-		if(ObjVelocity.magnitude > magnitudeJumpAcceptance){
-			characterState = CharacterState.JUMPING_LONG;
+
+
+		if(jump > 0 && IsGrounded()){
+			// later come up with a keyboard click tester (don't let holding down button work as jump input)
+			// now determine what kind of jump
+			if(specialJump > 0){
+				if(running){
+					// since we are in the running state we will do a high jump
+					LongJump();
+				}
+				else{
+					HighJump();
+				}
+			}
+			else{
+				RegularJump();
+			}
+		}
+
+
+		if(running){
+			if(animMoveSpeed < animRunSpeed){
+				animMoveSpeed += animDeltaSpeed * 5;
+			}
+			else{
+				animMoveSpeed -= animDeltaSpeed * 5;
+			}
+			anim.SetFloat("speed", animMoveSpeed);
 		}
 		else{
-			// no long jump just regular
+			if(animMoveSpeed < animWalkSpeed){
+				animMoveSpeed += animDeltaSpeed;
+			}
+			else{
+				animMoveSpeed -= animDeltaSpeed;
+			}
+			anim.SetFloat("speed", animWalkSpeed);
 		}
-		*/
+	}
+
+	void LongJumpingState(){
+		// each of the jumping states will check if grounded, if not then check for falling
+		// if so then switch
+		if(IsGrounded()){
+			rb.velocity = Vector3.zero;
+			characterState = CharacterState.RUNNING;
+		}
+	}
+
+	void HighJumpingState(){
+		if(IsGrounded()){
+			characterState = CharacterState.RUNNING;
+		}
+		else{
+			// if not grounded we want to maintain the initial object velocity before the jump
+			// collect the x and z components and add them to the current position
+			Vector3 translate = new Vector3(ObjVelocity.x, 0, ObjVelocity.z);
+			transform.Translate (translate * Time.deltaTime, Space.World);
+			ObjVelocity *= jumpDirectionalMomentumDecay;
+		}
+	}
+
+	void LowJumpingState(){
+		if(IsGrounded()){
+			characterState = CharacterState.RUNNING;
+		}
+		else{
+			// if not grounded we want to maintain the initial object velocity before the jump
+			// collect the x and z components and add them to the current position
+			Vector3 translate = new Vector3(ObjVelocity.x, 0, ObjVelocity.z);
+			transform.Translate (translate * Time.deltaTime, Space.World);
+			ObjVelocity *= jumpDirectionalMomentumDecay;
+		}
 	}
 
 	void LongJump(){
 		Vector3 jump = new Vector3(transform.forward.x * initialLongJumpVelocity.x, initialLongJumpVelocity.y, transform.forward.z * initialLongJumpVelocity.x);
 		rb.AddForce(jump, ForceMode.Impulse);
+		characterState = CharacterState.JUMPING_LONG;
 	}
 
 	void HighJump(){
 		rb.AddForce(new Vector3(0, initialHighJumpVelocity, 0), ForceMode.Impulse);
+		characterState = CharacterState.JUMPING_HIGH;
 	}
 
 	void RegularJump(){
 		rb.AddForce(new Vector3(0, initialJumpVelocity, 0), ForceMode.Impulse);
+		characterState = CharacterState.JUMPING_LOW;
 	}
 
 	bool IsGrounded(){
 		// test if the character controller is grounded function is sufficent
 		return Physics.Raycast(transform.position, -Vector3.up, groundDistanceCheck);
-
 	}
 
 
-
+	/*
 	void extra(){
 		speed += interval;
 		anim.SetFloat("speed", speed);
 	}
+	*/
 
-	protected enum CharacterState{
+	public enum CharacterState{
 		// if a state switch is detected we finish up the orignal function and swap the state,
 		// and on the NEXT FRAME the new state function will be called (avoid infinite loops)
 

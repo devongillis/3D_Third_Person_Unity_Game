@@ -758,7 +758,7 @@ Transform:
   m_GameObject: {fileID: 1197030213}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 20, y: 1, z: 20}
+  m_LocalScale: {x: 100, y: 1, z: 100}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 3
@@ -787,17 +787,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aa82a5743c4e8f643b8544810aa855d6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  interval: 0.001
-  walkSpeed: 2
-  runSpeed: 6
-  magnitudeJumpAcceptance: 1
-  groundDistanceCheck: 0.1
+  animMoveSpeed: 0
+  animDeltaSpeed: 0.04
+  animIdleSpeed: 0
+  animWalkSpeed: 0.6
+  animRunSpeed: 1
+  characterState: 0
+  walkSpeed: 10
+  runSpeed: 20
+  magnitudeJumpAcceptance: 15
+  groundDistanceCheck: 0.2
   turnSmoothTime: 0.2
   speedSmoothTime: 0.1
   distToGround: 0
-  initialJumpVelocity: 1
-  initialHighJumpVelocity: 1
-  initialLongJumpVelocity: {x: 1, y: 1}
+  initialJumpVelocity: 25
+  initialHighJumpVelocity: 35
+  initialLongJumpVelocity: {x: 20, y: 20}
+  jumpDirectionalMomentumDecay: 0.96
   running: 0
 --- !u!114 &1571189989
 MonoBehaviour:
