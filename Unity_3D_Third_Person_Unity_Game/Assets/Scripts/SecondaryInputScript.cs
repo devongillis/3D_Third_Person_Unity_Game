@@ -13,17 +13,24 @@ public class SecondaryInputScript : MonoBehaviour
 	public int ticks = 10;
 	int ticker = 0;
 
-	character_script_controller script;
+	//character_script_controller script;
+	characterControllerScript_withCharacterControllerAttribute script;
 
-	ButtonClick button = ButtonClick.BUTTON_NOT_FIRST_PRESS;
+	public ButtonClick button = ButtonClick.BUTTON_NOT_FIRST_PRESS;
     void Start()
     {
+		//GameObject player = GameObject.Find("character_astronaut");
+		//script = player.GetComponent<character_script_controller>();
 		GameObject player = GameObject.Find("character_astronaut");
-		script = player.GetComponent<character_script_controller>();
+		script = player.GetComponent<characterControllerScript_withCharacterControllerAttribute>();
+
 		//script
     }
 
+	//Input.GetKeyDown(KeyCode.W)
+
     // Update is called once per frame
+	/*
     void Update()
     {
 		if(button == ButtonClick.BUTTON_NOT_FIRST_PRESS){
@@ -70,8 +77,55 @@ public class SecondaryInputScript : MonoBehaviour
 			script.running = false;
 		}
     }
+    */
+	void Update()
+	{
+		if(button == ButtonClick.BUTTON_NOT_FIRST_PRESS){
+			// we can check for input
+			if(Input.GetKey(KeyCode.W)){
+				button = ButtonClick.BUTTON_IS_PRESSED;
+			}
+		}
+		else if(button == ButtonClick.BUTTON_IS_PRESSED){
+			// we can check for no input
+			if(!Input.GetKey(KeyCode.W)){
+				button = ButtonClick.FIRST_CLICK;
+				//ticker = ticks;
+				timer = time;
+			}
+		}
+		else if(button == ButtonClick.FIRST_CLICK){
+			// we can check for input
+			if(Input.GetKey(KeyCode.W)){
+				button = ButtonClick.SECOND_PRESS;
+				//Debug.Log("second click");
+			}
+			else{
+				//ticker--;
+				timer -= Time.deltaTime;
+				if(timer <= 0.0f){
+					button = ButtonClick.BUTTON_NOT_FIRST_PRESS;
+					//Debug.Log("too late");
+				}
+			}
+		}
+		else{
+			if(!Input.GetKey(KeyCode.W)){
+				// button let go
+				button = ButtonClick.BUTTON_NOT_FIRST_PRESS;
+				Debug.Log("released");
+			}
+		}
 
-	enum ButtonClick{
+		if(button == ButtonClick.SECOND_PRESS){
+			script.running = true;
+		}
+		else{
+			script.running = false;
+		}
+	}
+
+	public enum ButtonClick{
 		BUTTON_NOT_FIRST_PRESS, // the default state, if timer goes out or button released in second press
 		BUTTON_IS_PRESSED, // button has been pressed for first time
 		FIRST_CLICK, // only set when the act of releasing a button is observed

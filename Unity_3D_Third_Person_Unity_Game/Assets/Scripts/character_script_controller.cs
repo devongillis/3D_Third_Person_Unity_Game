@@ -65,7 +65,7 @@ public class character_script_controller : MonoBehaviour
     }
 
     // Update is called once per frame
-    void Update(){
+    void FixedUpdate(){
 
 		NewPos = transform.position;
 		ObjVelocity = (NewPos - PrevPos)/Time.deltaTime;
@@ -117,7 +117,10 @@ public class character_script_controller : MonoBehaviour
 	void StationaryState(){
 		// this function is called if player originally is in the stationary state
 		// from the stationary state our character can enter a running or jumping state
-		rb.velocity = Vector3.zero;
+		//rb.velocity = Vector3.zero;
+		if(IsGrounded()){
+			rb.velocity = Vector3.zero;
+		}
 		if (input != Vector2.zero) {
 			Debug.Log("input");
 			// must exit the stationary state
@@ -141,8 +144,9 @@ public class character_script_controller : MonoBehaviour
 		}
 		// if no input was registered we remain in the stationary state, and animation will reflect that
 
-		if(animMoveSpeed < animIdleSpeed){
-			animMoveSpeed += animDeltaSpeed;
+		if(animMoveSpeed <= animIdleSpeed){
+			//animMoveSpeed += animDeltaSpeed;
+			animMoveSpeed = animIdleSpeed;
 		}
 		else{
 			animMoveSpeed -= animDeltaSpeed;
@@ -153,6 +157,9 @@ public class character_script_controller : MonoBehaviour
 
 	void RunningState(){
 		// running covers any horizontal movement, so check speed to do a long jump
+		if(IsGrounded()){
+			rb.velocity = Vector3.zero;
+		}
 		if (input != Vector2.zero) {
 			float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
 			transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
@@ -311,4 +318,14 @@ public class character_script_controller : MonoBehaviour
 	long jump will begin using regular gravity when over the initial height jump of the long
 	jump duration.
 	 */
+
+	void OnCollisionEnter(Collision collision){
+		if(collision.contacts[0].normal.y > -0.01f && collision.contacts[0].normal.y < 0.01f){
+			Debug.Log("wall");
+			rb.velocity = new Vector3(0, rb.velocity.y, 0);
+		}
+		else{
+			rb.velocity = Vector3.zero;
+		}
+	}
 }
