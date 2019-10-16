@@ -1,12 +1,32 @@
 fileFormatVersion: 2
-guid: 47523ce534810d64ca0cb7ddea25a8c8
+guid: 3ed7adea686484d46a238639b7e695fe
 ModelImporter:
   serializedVersion: 26
   internalIDToNameTable:
   - first:
       74: 1989289236423521904
     second: Default Take
-  externalObjects: {}
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: dirt__wood_jpg
+    second: {fileID: 2100000, guid: 5015fc9b7a2e14e47837c175f49998d3, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: grass_side__wood_jpg
+    second: {fileID: 2100000, guid: afebbcf6f4c431e41be213000458711f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: grass_top__wood_jpg
+    second: {fileID: 2100000, guid: 7eb879a4916bdaf4e8703c2991137d1b, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: wood__wood_jpg
+    second: {fileID: 2100000, guid: dbbf484735e8c1643875dc344c5b20ec, type: 2}
   materials:
     importMaterials: 1
     materialName: 0

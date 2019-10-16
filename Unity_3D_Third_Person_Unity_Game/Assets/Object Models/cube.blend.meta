@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: cf34b5a9a0ed6f1449cfa131de84fbef
+guid: 43ddde50e618e6c4e827aef34f381086
 ModelImporter:
   serializedVersion: 26
   internalIDToNameTable:
@@ -10,18 +10,13 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: dirt__wood_jpg
-    second: {fileID: 2100000, guid: 5015fc9b7a2e14e47837c175f49998d3, type: 2}
+      name: body
+    second: {fileID: 2100000, guid: 8a29612fedd2b1343b184629253eaee7, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: grass_top__wood_jpg
-    second: {fileID: 2100000, guid: 7eb879a4916bdaf4e8703c2991137d1b, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wood__wood_jpg
-    second: {fileID: 2100000, guid: dbbf484735e8c1643875dc344c5b20ec, type: 2}
+      name: top
+    second: {fileID: 2100000, guid: 94756c6c448b40c4c8b0c409241ad6e5, type: 2}
   materials:
     importMaterials: 1
     materialName: 0
