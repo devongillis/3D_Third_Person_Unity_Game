@@ -9,7 +9,12 @@ public class cameraController : MonoBehaviour {
 	public float pitchSensitivity = 5;
 	public Transform target;
 	public float dstFromTarget = 2;
+
+	public bool useRegularPitch = true;
+
 	public Vector2 pitchMinMax = new Vector2 (-40, 85);
+	public Vector2 mazePitchMinMax = new Vector2(50, 85);
+
 
 	public Vector3 offset = new Vector3(0, 0, 0);
 
@@ -19,6 +24,8 @@ public class cameraController : MonoBehaviour {
 
 	float yaw;
 	float pitch;
+
+
 
 	void Start() {
 		if (lockCursor) {
@@ -37,8 +44,13 @@ public class cameraController : MonoBehaviour {
 
 
 
+		if(useRegularPitch){
+			pitch = Mathf.Clamp (pitch, pitchMinMax.x, pitchMinMax.y);
+		}
+		else{
+			pitch = Mathf.Clamp (pitch, mazePitchMinMax.x, mazePitchMinMax.y);
+		}
 
-		pitch = Mathf.Clamp (pitch, pitchMinMax.x, pitchMinMax.y);
 		currentRotation = Vector3.SmoothDamp (currentRotation, new Vector3 (pitch, yaw), ref rotationSmoothVelocity, rotationSmoothTime);
 		transform.eulerAngles = currentRotation;
 		transform.position = target.position + offset - transform.forward * dstFromTarget;
