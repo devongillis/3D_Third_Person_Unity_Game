@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class DebuggingShader : MonoBehaviour
+public class DebuggingColorTrianglesByNormalYShader : MonoBehaviour
 {
 	Mesh mesh = null;
 	Vector3 rotation = new Vector3();

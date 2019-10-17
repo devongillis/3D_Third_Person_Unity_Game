@@ -1,0 +1,30 @@
+Use a series of empty game objects that have zero rotation, scale, and transform.
+These are not to have any scripts attached but rather are folder-like objects that
+just hold references to their respective game objects. this is to keep the scenes organized
+NOTE: do not place the objects inside (creating a parent child relationship) but underneath
+
+Current folder-like objects
+- Cameras (all cameras in the scene are stored here)
+- Terrain models (objects that are considered part of terrain such as extra edges and towers)
+- Platforms (any platform that is not bound by a surface, but is hovering)
+- NORS (non-object-related-scripts, scripts that are run without involving their parent object)
+- Characters (any model that is considered alive with animation)
+- Collectibles (broken down into collectible groups, some involve 50+ collectables for one type)
+- Triggers (any trigger that is not associated with an object but rather a location in the scene)
+- Audio sources
+- Lights
+- Switches (any object that toggles for a particular action, buttons, switches, etc.)
+- Terrain (if terrain is broken up for rendering purposes)
+- Movable (objects that can be relocated by player, pickup box, shift heavy objects, etc.)
+- Water (all bodies of water)
+- 
+
+each new object added to unity must first placed in the correct respective folder (create a new folder
+if non of the current folders apply). make sure to save your prefabs for each object you wish to use
+in subsequent scenes.
+
+the Debugging folder contains files used to test object attributes
+- DebuggingColorTrianglesByNormalYShader: used to color code the triangles of a mesh by their normal.y values
+red refers to ceilings and sliding surfaces, blue refers to walls, and green refers to floors
+
+
