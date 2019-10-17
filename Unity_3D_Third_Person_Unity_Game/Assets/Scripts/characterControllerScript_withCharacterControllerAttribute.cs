@@ -72,6 +72,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 	public bool InputAccepted = true;
 
+
+	public Vector3 extraRotationTranslationVector = Vector3.zero;
+
 	// Start is called before the first frame update
 	void Start(){
 		controller = GetComponent<CharacterController>();
@@ -88,35 +91,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 	// Update is called once per frame
 	void FixedUpdate(){
-		Vector3 start = transform.position;
-		Vector3 direction = Vector3.down;
-		RaycastHit hit;
-		if(IsGrounded()){
-			if(Physics.Raycast(start, direction, out hit)){
-				if(hit.transform.tag == "rotatingPlatform"){
-					this.transform.parent = hit.transform;
-				}
-			}
-		}
-		else{
-			this.transform.parent = null;
-		}
-		/*
-		if(forcedFall){
-			if(running || Input.GetKey(KeyCode.E)){
-				universalMovementVector += moveBack * moveBackGradient * 2;
-			}
-			else{
-				universalMovementVector += moveBack * moveBackGradient;
-			}
-
-			universalMovementVector
-
-
-			controller.Move(universalMovementVector * Time.deltaTime);
-			forcedFall = false;
-		}
-		*/
+		
 		NewPos = transform.position;
 		ObjVelocity = (NewPos - PrevPos)/Time.deltaTime;
 		PrevPos = NewPos;
@@ -168,10 +143,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	}
 
 	void StationaryState(){
-		// this function is called if player originally is in the stationary state
-		// stationary is grounded and no player movement input
-		// from the stationary state our character can enter a running or jumping state
-		//rb.velocity = Vector3.zero;
+		
 		if(!IsGrounded()){
 			// we are in the stationary state but the floor is not present, (got pushed off the edge?)
 			// we swap the state and skip the input
@@ -180,7 +152,6 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		else{
 			if (input != Vector2.zero) {
 				// we have input for running
-				//Debug.Log("input");
 				// must exit the stationary state
 				characterState = CharacterState.RUNNING;
 				// notice we can swap into and then out of running state if horizontal and jump
@@ -188,6 +159,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 				// stationary pose, which means the character can't do a long jump from stationary
 			}
 
+			CalculateExtraRotationTranslationVector();
+			if(extraRotationTranslationVector != Vector3.zero){
+				controller.Move(extraRotationTranslationVector);
+			}
 			// now check if a jump has been called
 			// notice how we go to a jump state rather than running state if both running and jumping
 			if(jump > 0 && IsGrounded()){
@@ -215,6 +190,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	}
 
 	void RunningState(){
+		
 		// running covers any horizontal movement, so check speed to do a long jump
 		if(!IsGrounded()){
 			// we are in the running state but no ground is present, we swap the state
@@ -239,7 +215,8 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 			// now apply gravity, gravity is m/s^2 so multiply by Time.deltaTime twice (only during a jump or fall)
 			universalMovementVector = transform.forward * currentSpeed;
-			controller.Move(universalMovementVector * Time.deltaTime);
+			CalculateExtraRotationTranslationVector();
+			controller.Move(universalMovementVector * Time.deltaTime + extraRotationTranslationVector);
 
 			if(jump > 0){
 				// later come up with a keyboard click tester (don't let holding down button work as jump input)
@@ -280,63 +257,55 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	}
 
 	void LongJumpingState(){
-		// each of the jumping states will check if grounded, if not then check for falling
-		// if so then switch
-		if(IsGrounded()){
-			// we have touched down on a surface
-			characterState = CharacterState.RUNNING;
-		}
-		else{
+		
+		float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
+		transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
 
-			float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-			transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
-			// if not grounded we want to maintain the initial object velocity before the jump and allow player to partially
-			// adjust it mid air if not a high jump
-			universalMovementVector.x = ObjVelocity.x;
-			universalMovementVector.z = ObjVelocity.z;
-			universalMovementVector.y += gravity * Time.deltaTime;
-			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-			controller.Move(universalMovementVector * Time.deltaTime);
+		universalMovementVector.x = ObjVelocity.x;
+		universalMovementVector.z = ObjVelocity.z;
+		universalMovementVector.y += gravity * Time.deltaTime;
+		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
+		controller.Move(universalMovementVector * Time.deltaTime);
+
+		if(universalMovementVector.y <= 0.0f){
+			characterState = CharacterState.FALLING;
 		}
 	}
 
 	void HighJumpingState(){
-		if(IsGrounded()){
-			characterState = CharacterState.RUNNING;
-		}
-		else{
+		
+		float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
+		transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
 
-			float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-			transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
-			// if not grounded we want to maintain the initial object velocity before the jump
+		float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+		currentSpeed = Mathf.SmoothDamp (currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
 
-			float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-			currentSpeed = Mathf.SmoothDamp (currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+		universalMovementVector = new Vector3(transform.forward.x * currentSpeed, universalMovementVector.y, transform.forward.z * currentSpeed);
+		universalMovementVector.y += gravity * Time.deltaTime;
+		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
+		controller.Move(universalMovementVector * Time.deltaTime);
 
-			universalMovementVector = new Vector3(transform.forward.x * currentSpeed, universalMovementVector.y, transform.forward.z * currentSpeed);
-			universalMovementVector.y += gravity * Time.deltaTime;
-			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-			controller.Move(universalMovementVector * Time.deltaTime);
+		if(universalMovementVector.y <= 0.0f){
+			characterState = CharacterState.FALLING;
 		}
 	}
 
 	void LowJumpingState(){
-		if(IsGrounded()){
-			characterState = CharacterState.RUNNING;
-		}
-		else{
+		
+		float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
+		transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
 
-			float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-			transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
-			// if not grounded we want to maintain the initial object velocity before the jump
+		float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+		currentSpeed = Mathf.SmoothDamp (currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
 
-			float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-			currentSpeed = Mathf.SmoothDamp (currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+		universalMovementVector = new Vector3(transform.forward.x * currentSpeed, universalMovementVector.y, transform.forward.z * currentSpeed);
 
-			universalMovementVector = new Vector3(transform.forward.x * currentSpeed, universalMovementVector.y, transform.forward.z * currentSpeed);
-			universalMovementVector.y += gravity * Time.deltaTime;
-			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-			controller.Move(universalMovementVector * Time.deltaTime);
+		universalMovementVector.y += gravity * Time.deltaTime;
+		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
+		controller.Move(universalMovementVector * Time.deltaTime);
+
+		if(universalMovementVector.y <= 0.0f){
+			characterState = CharacterState.FALLING;
 		}
 	}
 
@@ -345,7 +314,6 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			characterState = CharacterState.RUNNING;
 		}
 		else{
-			//controller.Move(gravity * Time.deltaTime * Time.deltaTime);
 			universalMovementVector.y += gravity * Time.deltaTime;
 			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 			controller.Move(universalMovementVector * Time.deltaTime);
@@ -357,90 +325,50 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		// it will not accept inputs and will set the state back to stationary, if still on slope,
 		// the collision function will send us back to slipping for a 0 net change
 		// we want all initial movement zeroed out so don't "add" to but rather "set" the universal vector
-		/*
-		universalMovementVector = moveBack * slopeSlipSpeed;
-		controller.Move(universalMovementVector * Time.detlaTime);
-		*/
 		// to avoid issues with collider not allowing movement due to y component forcing character into mesh (maybe)
 		// apply the x and z first and then the y
-
 		// intially from another state the character moves and the OnControllerColliderHit function is called within after moving
 		// this should then determine a vector to move back and down by and set the state to slipping, on the first slipping call
 		// we move by the moveback vector and thus call the collision function again it will decide wether to swap the state
-
 
 		characterState = CharacterState.STATIONARY;
 
 		universalMovementVector = Vector3.zero;
 		controller.Move(new Vector3(moveBack.x, 0, moveBack.z) * slopeSlipSpeed * Time.deltaTime);
 		controller.Move(new Vector3(0, moveBack.y * 20, 0) * slopeSlipSpeed * Time.deltaTime);
-		Debug.Log(moveBack);
-
-		// now determine whether we should remain in slip state or exit
-		// check the
-
-		//characterState = CharacterState.STATIONARY;
-
+		//Debug.Log(moveBack);
 	}
 
 	void LongJump(){
-		//Vector3 jump = new Vector3(transform.forward.x * initialLongJumpVelocity.x, initialLongJumpVelocity.y, transform.forward.z * initialLongJumpVelocity.x);
-		//rb.AddForce(jump, ForceMode.Impulse);
-		//controller.Move((transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0))  * Time.deltaTime);
-
-
+		
 		universalMovementVector = transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0);
-		//universalMovementVector.y += gravity * Time.deltaTime;
 		controller.Move(universalMovementVector * Time.deltaTime);
-
-
-
 		characterState = CharacterState.JUMPING_LONG;
 	}
 
 	void HighJump(){
-		//rb.AddForce(new Vector3(0, initialHighJumpVelocity, 0), ForceMode.Impulse);
-		//controller.Move(new Vector3(0, initialHighJumpVelocity, 0)  * Time.deltaTime);
-
+		
 		universalMovementVector = new Vector3(0, initialHighJumpVelocity, 0);
-		//universalMovementVector.y += gravity * Time.deltaTime;
 		controller.Move(universalMovementVector * Time.deltaTime);
-
-
 		characterState = CharacterState.JUMPING_HIGH;
 	}
 
 	void RegularJump(){
-		//rb.AddForce(new Vector3(0, initialJumpVelocity, 0), ForceMode.Impulse);
-		//controller.Move(new Vector3(0, initialJumpVelocity, 0)  * Time.deltaTime);
-
+		
 		universalMovementVector = new Vector3(0, initialJumpVelocity, 0);
-		//universalMovementVector.y += gravity * Time.deltaTime;
 		controller.Move(universalMovementVector * Time.deltaTime);
-
 		characterState = CharacterState.JUMPING_LOW;
 	}
 
 	bool IsGrounded(){
-		// test if the character controller is grounded function is sufficent
-		//return controller.isGrounded;
-
 		if(Physics.Raycast(transform.position, -Vector3.up, groundDistanceCheck)){
-			controller.Move(new Vector3(0, -groundDistanceCheck, 0) * Time.deltaTime);
+			controller.Move(new Vector3(0, -groundDistanceCheck, 0));
 			return true;
 		}
 		else{
 			return false;
 		}
 	}
-
-
-	/*
-	void extra(){
-		speed += interval;
-		anim.SetFloat("speed", speed);
-	}
-	*/
 
 	public enum CharacterState{
 		// if a state switch is detected we finish up the orignal function and swap the state,
@@ -486,19 +414,27 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	 */
 
 
+	void CalculateExtraRotationTranslationVector(){
+		// this function will ray cast downward for a rotating body
+		// if object is tagged ith rotation access its script for
+		// a vector to translate by, the player is grounded when this
+		// function is called
 
-
-	void OnCollisionEnter(Collision collision){
-		if(collision.contacts[0].normal.y > -0.01f && collision.contacts[0].normal.y < 0.01f){
-			Debug.Log("wall");
-			//rb.velocity = new Vector3(0, rb.velocity.y, 0);
-		}
-		else{
-			//rb.velocity = Vector3.zero;
+		Vector3 start = transform.position;
+		Vector3 direction = Vector3.down;
+		RaycastHit hit;
+		extraRotationTranslationVector = Vector3.zero;
+		if(Physics.Raycast(start, direction, out hit)){
+			if(hit.transform.tag == "rotatingPlatform"){
+				extraRotationTranslationVector = hit.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
+			}
 		}
 	}
 
 	void OnControllerColliderHit(ControllerColliderHit hit){ // this function in unity is called inside characterController.move()
+		if(hit.collider.tag == "rotatingPlatform"){
+			return;
+		}
 		if(characterState == CharacterState.FALLING){
 			Debug.Log(hit.normal);
 		}
@@ -533,12 +469,6 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			else{
 				// we are waiting for update to execute our moveback vector, so do nothing
 			}
-		}
-		else if(characterState == CharacterState.FALLING){
-			// we are falling but colliding
-			//universalMovementVector.x += hit.normal.x;
-			//universalMovementVector.z += hit.normal.z;
-			//universalMovementVector.y -= 10;
 		}
 		else{
 			// regular floor
