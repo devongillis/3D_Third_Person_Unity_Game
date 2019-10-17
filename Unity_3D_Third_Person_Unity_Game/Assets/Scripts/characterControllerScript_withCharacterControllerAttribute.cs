@@ -53,6 +53,8 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 	private CharacterController controller;
 
+
+
 	// this is the vector by which the player moves, all inputs and movements are added to this vector and then
 	// this vector is applied to the player each update, so to jump you apply a single up value and on each frame
 	// that value will be used to move the player up, and gravity will reduce it
@@ -64,6 +66,11 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	bool forcedFall = false;
 	public float moveBackGradient = 1.0f;
 	Vector3 moveBack;
+
+	public float slopeSlipSpeed = 0.1f;
+
+
+	public bool InputAccepted = true;
 
 	// Start is called before the first frame update
 	void Start(){
@@ -94,7 +101,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		else{
 			this.transform.parent = null;
 		}
-
+		/*
 		if(forcedFall){
 			if(running || Input.GetKey(KeyCode.E)){
 				universalMovementVector += moveBack * moveBackGradient * 2;
@@ -102,10 +109,14 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			else{
 				universalMovementVector += moveBack * moveBackGradient;
 			}
+
+			universalMovementVector
+
+
 			controller.Move(universalMovementVector * Time.deltaTime);
 			forcedFall = false;
 		}
-
+		*/
 		NewPos = transform.position;
 		ObjVelocity = (NewPos - PrevPos)/Time.deltaTime;
 		PrevPos = NewPos;
@@ -115,7 +126,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		// enter the function call from current character state
 		// and then change the state respsectively, followed by
 		// acting on the input values
-		if(characterState == CharacterState.NO_INPUT){
+		if(!InputAccepted){
 			// act like no inputs being made
 			input = new Vector2(0, 0);
 			jump = 0;
@@ -149,6 +160,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		}
 		else if(characterState == CharacterState.FALLING_NO_CONTROL){
 
+		}
+		else if(characterState == CharacterState.SLIPPING_NO_CONTROL){
+			SlippingState();
 		}
 
 	}
@@ -338,6 +352,37 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		}
 	}
 
+	void SlippingState(){
+		// slipping state will put the character back and down the slope by the moveback vector
+		// it will not accept inputs and will set the state back to stationary, if still on slope,
+		// the collision function will send us back to slipping for a 0 net change
+		// we want all initial movement zeroed out so don't "add" to but rather "set" the universal vector
+		/*
+		universalMovementVector = moveBack * slopeSlipSpeed;
+		controller.Move(universalMovementVector * Time.detlaTime);
+		*/
+		// to avoid issues with collider not allowing movement due to y component forcing character into mesh (maybe)
+		// apply the x and z first and then the y
+
+		// intially from another state the character moves and the OnControllerColliderHit function is called within after moving
+		// this should then determine a vector to move back and down by and set the state to slipping, on the first slipping call
+		// we move by the moveback vector and thus call the collision function again it will decide wether to swap the state
+
+
+		characterState = CharacterState.STATIONARY;
+
+		universalMovementVector = Vector3.zero;
+		controller.Move(new Vector3(moveBack.x, 0, moveBack.z) * slopeSlipSpeed * Time.deltaTime);
+		controller.Move(new Vector3(0, moveBack.y * 20, 0) * slopeSlipSpeed * Time.deltaTime);
+		Debug.Log(moveBack);
+
+		// now determine whether we should remain in slip state or exit
+		// check the
+
+		//characterState = CharacterState.STATIONARY;
+
+	}
+
 	void LongJump(){
 		//Vector3 jump = new Vector3(transform.forward.x * initialLongJumpVelocity.x, initialLongJumpVelocity.y, transform.forward.z * initialLongJumpVelocity.x);
 		//rb.AddForce(jump, ForceMode.Impulse);
@@ -379,7 +424,14 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	bool IsGrounded(){
 		// test if the character controller is grounded function is sufficent
 		//return controller.isGrounded;
-		return Physics.Raycast(transform.position, -Vector3.up, groundDistanceCheck);
+
+		if(Physics.Raycast(transform.position, -Vector3.up, groundDistanceCheck)){
+			controller.Move(new Vector3(0, -groundDistanceCheck, 0) * Time.deltaTime);
+			return true;
+		}
+		else{
+			return false;
+		}
 	}
 
 
@@ -403,7 +455,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		JUMPING_HIGH,
 		FALLING, // upon ground detection will transition to stationary
 		FALLING_NO_CONTROL, // when fall starts without a jump (i.e. bumped off edge)
-		NO_INPUT // used when doing cutscene or other stuff when character shouldn't move,
+		SLIPPING_NO_CONTROL
 		// a function is called to set this value and must clean up a few values before forcing a no input senario
 
 	}
@@ -446,21 +498,50 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		}
 	}
 
-	void OnControllerColliderHit(ControllerColliderHit hit){
-		//Debug.Log(hit.normal);
-		if(hit.normal.y < 0.01f && hit.normal.y > -0.01f){
-			Debug.Log("wall");
+	void OnControllerColliderHit(ControllerColliderHit hit){ // this function in unity is called inside characterController.move()
+		if(characterState == CharacterState.FALLING){
+			Debug.Log(hit.normal);
 		}
-		else if(hit.normal.y < 0.707f){
-			if(!forcedFall){
-				forcedFall = true;
-				moveBack = new Vector3(hit.normal.x, 0, hit.normal.z);
-				moveBack.Normalize();
-			}
-			Debug.Log("bad wall");
+		if(hit.normal.y < -0.01f){
+			// ceiling
+		}
+		else if(hit.normal.y < 0.01f){
+			//Debug.Log("wall");
+		}
+		else if(hit.normal.y < 0.5f){
+			// slippery surface, greater than 60 degrees
+			// we must set the player into the slip state
+			// with a backward/downward vector that is proportional
+			// to the slope of the slipper surface
 
-			// move the character backward by a small bit in the opposite direction of the normal
-			//forcedFall = true;
+			// the downward/backward vector is the normal vector with the
+			// value of sqrt(x^2 + z^2) switched with y
+			// so x1 = mx, z1 = mz, and m = y/sqrt(x^2 + z^2)
+			// and y = sqrt(x^2 + z^2)
+			// make y negative to reflect gravity
+			// and move x and z first then y
+			if(characterState != CharacterState.SLIPPING_NO_CONTROL){
+				characterState = CharacterState.SLIPPING_NO_CONTROL;
+				// we have not executed a slip
+				float y1 = Mathf.Sqrt(hit.normal.x * hit.normal.x + hit.normal.z * hit.normal.z);
+				float m = hit.normal.y/y1;
+				float x1 = hit.normal.x * m;
+				float z1 = hit.normal.z * m;
+				// the new vector is ready
+				moveBack = new Vector3(x1, -y1, z1); // this is a unit vector (magnitude = 1)
+			}
+			else{
+				// we are waiting for update to execute our moveback vector, so do nothing
+			}
+		}
+		else if(characterState == CharacterState.FALLING){
+			// we are falling but colliding
+			//universalMovementVector.x += hit.normal.x;
+			//universalMovementVector.z += hit.normal.z;
+			//universalMovementVector.y -= 10;
+		}
+		else{
+			// regular floor
 		}
 	}
 
