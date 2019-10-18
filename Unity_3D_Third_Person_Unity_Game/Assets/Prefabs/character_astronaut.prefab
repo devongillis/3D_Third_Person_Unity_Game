@@ -1472,7 +1472,7 @@ GameObject:
   - component: {fileID: 3152297277261619458}
   m_Layer: 0
   m_Name: character_astronaut
-  m_TagString: Untagged
+  m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -1548,7 +1548,7 @@ MonoBehaviour:
   gravity: -70
   maxFallVelocity: -100
   magnitudeJumpAcceptance: 15
-  groundDistanceCheck: 0.2
+  groundDistanceCheck: 1.1
   turnSmoothTime: 0
   speedSmoothTime: 0.1
   distToGround: 0
@@ -1559,6 +1559,11 @@ MonoBehaviour:
   running: 0
   universalMovementVector: {x: 0, y: 0, z: 0}
   moveBackGradient: 15
+  slopeSlipSpeed: 10
+  InputAccepted: 1
+  extraRotationTranslationVector: {x: 0, y: 0, z: 0}
+  groundPoundTimer: 0
+  groundPoundTimeLimit: 1
 --- !u!143 &6242669349842474472
 CharacterController:
   m_ObjectHideFlags: 0
@@ -1572,7 +1577,7 @@ CharacterController:
   serializedVersion: 2
   m_Height: 4.15
   m_Radius: 0.85
-  m_SlopeLimit: 45
+  m_SlopeLimit: 85
   m_StepOffset: 0.3
   m_SkinWidth: 0.09
   m_MinMoveDistance: 0.001
@@ -1584,7 +1589,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 8705450201674343642}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 905eff3c73d81d6499dc53012ca1a1c2, type: 3}
   m_Name: 

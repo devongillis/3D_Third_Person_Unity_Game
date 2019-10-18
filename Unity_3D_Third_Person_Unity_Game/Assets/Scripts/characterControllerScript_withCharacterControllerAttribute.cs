@@ -7,7 +7,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	Transform cameraT;
 
 	private Animator anim;
-	private float speed = 0.0f;
+	//private float speed = 0.0f;
 	public float animMoveSpeed = 0.0f;
 	public float animDeltaSpeed = 0.01f;
 	public float animIdleSpeed = 0.0f;
@@ -47,6 +47,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	Vector2 input;
 	float jump;
 	float specialJump;
+	float groundPound;
 
 	// secondary input variables
 	public bool running;
@@ -63,7 +64,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 
 
-	bool forcedFall = false;
+	//bool forcedFall = false;
 	public float moveBackGradient = 1.0f;
 	Vector3 moveBack;
 
@@ -74,6 +75,14 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 
 	public Vector3 extraRotationTranslationVector = Vector3.zero;
+
+
+
+
+
+	public float groundPoundTimer = 0.0f;
+	public float groundPoundTimeLimit = 10.0f;
+
 
 	// Start is called before the first frame update
 	void Start(){
@@ -106,6 +115,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			input = new Vector2(0, 0);
 			jump = 0;
 			specialJump = 0;
+			groundPound = 0;
 		}
 		else{
 			// inputs are allowed
@@ -113,6 +123,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			input = input.normalized;
 			jump = Input.GetAxisRaw("Jump");
 			specialJump = Input.GetAxisRaw("Special Jump");
+			groundPound = Input.GetAxisRaw("Ground Pound");
 		}
 		// inputs are collected
 		if(characterState == CharacterState.STATIONARY){
@@ -138,6 +149,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		}
 		else if(characterState == CharacterState.SLIPPING_NO_CONTROL){
 			SlippingState();
+		}
+		else if(characterState == CharacterState.GROUND_POUND){
+			GroundPoundState();
 		}
 
 	}
@@ -270,6 +284,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		if(universalMovementVector.y <= 0.0f){
 			characterState = CharacterState.FALLING;
 		}
+
+		if(groundPound > 0){
+			characterState = CharacterState.GROUND_POUND;
+		}
 	}
 
 	void HighJumpingState(){
@@ -287,6 +305,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 		if(universalMovementVector.y <= 0.0f){
 			characterState = CharacterState.FALLING;
+		}
+
+		if(groundPound > 0){
+			characterState = CharacterState.GROUND_POUND;
 		}
 	}
 
@@ -307,16 +329,24 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		if(universalMovementVector.y <= 0.0f){
 			characterState = CharacterState.FALLING;
 		}
+
+		if(groundPound > 0){
+			characterState = CharacterState.GROUND_POUND;
+		}
 	}
 
 	void FallingState(){
 		if(IsGrounded()){
-			characterState = CharacterState.RUNNING;
+			characterState = CharacterState.RUNNING; // see if stationary is more appropriate
 		}
 		else{
 			universalMovementVector.y += gravity * Time.deltaTime;
 			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 			controller.Move(universalMovementVector * Time.deltaTime);
+
+			if(groundPound > 0){
+				characterState = CharacterState.GROUND_POUND;
+			}
 		}
 	}
 
@@ -339,6 +369,36 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		//Debug.Log(moveBack);
 	}
 
+	void GroundPoundState(){
+		// in the ground pound state we halt all motion and start the ground pound animation
+		// a timer is started which will cover the length of the animation plus a little delay
+		// then the rest of the code is allowed to process and the character falls at maximum
+		// velocity. once ground is detected we revert back to stationary
+		if(groundPoundTimer >= groundPoundTimeLimit){
+			// times up proceed with falling
+			if(IsGrounded()){
+				characterState = CharacterState.STATIONARY;
+				groundPoundTimer = 0.0f;
+			}
+			else{
+				controller.Move(new Vector3(0, maxFallVelocity, 0) * Time.deltaTime);
+			}
+		}
+		else{
+			groundPoundTimer += Time.deltaTime;
+		}
+	}
+	/*
+	public bool IsGroundPounding(){
+		Debug.Log(characterState);
+		if(characterState == CharacterState.GROUND_POUND){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	*/
 	void LongJump(){
 		
 		universalMovementVector = transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0);
@@ -383,7 +443,8 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		JUMPING_HIGH,
 		FALLING, // upon ground detection will transition to stationary
 		FALLING_NO_CONTROL, // when fall starts without a jump (i.e. bumped off edge)
-		SLIPPING_NO_CONTROL
+		SLIPPING_NO_CONTROL,
+		GROUND_POUND
 		// a function is called to set this value and must clean up a few values before forcing a no input senario
 
 	}
@@ -433,6 +494,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 	void OnControllerColliderHit(ControllerColliderHit hit){ // this function in unity is called inside characterController.move()
 		if(hit.collider.tag == "rotatingPlatform"){
+			return;
+		}
+		else if(hit.collider.tag == "switch" && characterState == CharacterState.GROUND_POUND){
+			hit.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
 			return;
 		}
 		if(characterState == CharacterState.FALLING){

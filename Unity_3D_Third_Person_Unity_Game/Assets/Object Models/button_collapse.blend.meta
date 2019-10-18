@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: dcdc692fc5b1c51408b9efe572926735
+guid: 74ddd7d7302cc304ba2d8c0abc663edb
 ModelImporter:
   serializedVersion: 26
   internalIDToNameTable:
@@ -10,28 +10,13 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: dirt
-    second: {fileID: 2100000, guid: fd46817b281371d4f8c16c40b823923c, type: 2}
+      name: body
+    second: {fileID: 2100000, guid: 84c0fe2739891b84bae51b39ff847b8d, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: grass
-    second: {fileID: 2100000, guid: fd846de22819236439b236257925a701, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: path
-    second: {fileID: 2100000, guid: d21b84f7b75ae4c469ea0e518094d1bc, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: pebbles
-    second: {fileID: 2100000, guid: 000d994eb18618547b96eb41350a135c, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: rock
-    second: {fileID: 2100000, guid: d6667f48f408b344b9457b53dca323f2, type: 2}
+      name: face
+    second: {fileID: 2100000, guid: 075fe178c070fe04291034af71496077, type: 2}
   materials:
     importMaterials: 1
     materialName: 0
