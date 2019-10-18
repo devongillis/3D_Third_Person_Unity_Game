@@ -84,6 +84,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	public float groundPoundTimeLimit = 10.0f;
 
 
+	public float forwardDistanceCheck = 0.1f;
+	public float moveBackValue = 0.1f;
+	public Vector3 fallingMoveBack = new Vector3(0, 0, 0);
+
 	// Start is called before the first frame update
 	void Start(){
 		controller = GetComponent<CharacterController>();
@@ -100,7 +104,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 	// Update is called once per frame
 	void FixedUpdate(){
-		
+		//Debug.Log(characterState);
 		NewPos = transform.position;
 		ObjVelocity = (NewPos - PrevPos)/Time.deltaTime;
 		PrevPos = NewPos;
@@ -342,8 +346,13 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		else{
 			universalMovementVector.y += gravity * Time.deltaTime;
 			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-			controller.Move(universalMovementVector * Time.deltaTime);
-
+			if(fallingMoveBack.magnitude != 0){
+				universalMovementVector.x = 0;
+				universalMovementVector.z = 0;
+			}
+			controller.Move(universalMovementVector * Time.deltaTime + fallingMoveBack);
+			Debug.Log("not grounded");
+			fallingMoveBack = Vector3.zero;
 			if(groundPound > 0){
 				characterState = CharacterState.GROUND_POUND;
 			}
@@ -493,6 +502,13 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	}
 
 	void OnControllerColliderHit(ControllerColliderHit hit){ // this function in unity is called inside characterController.move()
+		// rather than use the hit, we only care if it is a slippery floor
+		// so ray cast downward and get the normal.y
+
+
+
+
+
 		if(hit.collider.tag == "rotatingPlatform"){
 			return;
 		}
@@ -500,43 +516,61 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			hit.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
 			return;
 		}
-		if(characterState == CharacterState.FALLING){
-			Debug.Log(hit.normal);
-		}
-		if(hit.normal.y < -0.01f){
-			// ceiling
-		}
-		else if(hit.normal.y < 0.01f){
-			//Debug.Log("wall");
-		}
-		else if(hit.normal.y < 0.5f){
-			// slippery surface, greater than 60 degrees
-			// we must set the player into the slip state
-			// with a backward/downward vector that is proportional
-			// to the slope of the slipper surface
 
-			// the downward/backward vector is the normal vector with the
-			// value of sqrt(x^2 + z^2) switched with y
-			// so x1 = mx, z1 = mz, and m = y/sqrt(x^2 + z^2)
-			// and y = sqrt(x^2 + z^2)
-			// make y negative to reflect gravity
-			// and move x and z first then y
-			if(characterState != CharacterState.SLIPPING_NO_CONTROL){
-				characterState = CharacterState.SLIPPING_NO_CONTROL;
-				// we have not executed a slip
-				float y1 = Mathf.Sqrt(hit.normal.x * hit.normal.x + hit.normal.z * hit.normal.z);
-				float m = hit.normal.y/y1;
-				float x1 = hit.normal.x * m;
-				float z1 = hit.normal.z * m;
-				// the new vector is ready
-				moveBack = new Vector3(x1, -y1, z1); // this is a unit vector (magnitude = 1)
+		RaycastHit ray;
+		if(Physics.Raycast(transform.position, Vector3.down, out ray, groundDistanceCheck)){
+			//Debug.Log(ray.normal);
+
+
+			if(ray.normal.y < -0.09f){
+				// ceiling
+			}
+			else if(ray.normal.y < 0.09f){
+				//Debug.Log("wall");
+			}
+			else if(ray.normal.y < 0.5f){
+				// slippery surface, greater than 60 degrees
+				// we must set the player into the slip state
+				// with a backward/downward vector that is proportional
+				// to the slope of the slipper surface
+
+				// the downward/backward vector is the normal vector with the
+				// value of sqrt(x^2 + z^2) switched with y
+				// so x1 = mx, z1 = mz, and m = y/sqrt(x^2 + z^2)
+				// and y = sqrt(x^2 + z^2)
+				// make y negative to reflect gravity
+				// and move x and z first then y
+				if(characterState != CharacterState.SLIPPING_NO_CONTROL){
+					characterState = CharacterState.SLIPPING_NO_CONTROL;
+					//Debug.Log(hit.normal);
+					// we have not executed a slip
+					float y1 = Mathf.Sqrt(ray.normal.x * ray.normal.x + ray.normal.z * ray.normal.z);
+					float m = ray.normal.y/y1;
+					float x1 = ray.normal.x * m;
+					float z1 = ray.normal.z * m;
+					// the new vector is ready
+					moveBack = new Vector3(x1, -y1, z1); // this is a unit vector (magnitude = 1)
+				}
+				else{
+					// we are waiting for update to execute our moveback vector, so do nothing
+				}
 			}
 			else{
-				// we are waiting for update to execute our moveback vector, so do nothing
+				// regular floor
 			}
+
+
 		}
 		else{
-			// regular floor
+			//Debug.Log("no floor found");
+			// we did collide with something but it is not a floor, might be stuck on it
+			RaycastHit ray2;
+			Vector3 direction = hit.point - transform.position;
+			if(Physics.Raycast(transform.position, direction, out ray2, direction.magnitude + forwardDistanceCheck)){
+				Debug.Log("wall found");
+				fallingMoveBack = new Vector3(-direction.x, 0, -direction.z) * moveBackValue;
+				Debug.Log(fallingMoveBack);
+			}
 		}
 	}
 

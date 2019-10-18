@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: cf34b5a9a0ed6f1449cfa131de84fbef
+guid: 1b56113f1be9d66408c22ed8af69d197
 ModelImporter:
   serializedVersion: 26
   internalIDToNameTable:
@@ -10,18 +10,13 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: dirt__wood_jpg
-    second: {fileID: 2100000, guid: 5015fc9b7a2e14e47837c175f49998d3, type: 2}
+      name: base
+    second: {fileID: 2100000, guid: 4bcd7333ada5eb14d91df12667cd0dcc, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: grass_top__wood_jpg
-    second: {fileID: 2100000, guid: 7eb879a4916bdaf4e8703c2991137d1b, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: wood__wood_jpg
-    second: {fileID: 2100000, guid: dbbf484735e8c1643875dc344c5b20ec, type: 2}
+      name: top
+    second: {fileID: 2100000, guid: 93b4252dcbb5aa743939b84a34ef1783, type: 2}
   materials:
     importMaterials: 1
     materialName: 0
@@ -49,7 +44,7 @@ ModelImporter:
     extraExposedTransformPaths: []
     extraUserProperties: []
     clipAnimations: []
-    isReadable: 1
+    isReadable: 0
   meshes:
     lODScreenPercentages: []
     globalScale: 1
