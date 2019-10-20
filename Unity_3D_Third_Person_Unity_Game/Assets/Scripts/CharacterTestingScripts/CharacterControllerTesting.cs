@@ -4,19 +4,24 @@ using UnityEngine;
 
 public class CharacterControllerTesting : MonoBehaviour
 {
+
 	Transform cameraT;
     public float distToGround;
     public bool isGrounded = true;
     public Vector3 slopeVector = new Vector3(0, 0, 0);
-    public float height = 1.0f; // this needs to be half the value of the total player height
-    public float thickness = 1.0f; // this need to be hald the diameter of the total player
+    public float forwardHeightTop = 1.0f;
+    public float forwardHeightMiddle = 1.0f;
+    public float forwardHeightBottom = 1.0f;
+    public float downwardThickness = 0.1f; // the difference between the ground and the position of the character
+    public float downwardHeight = 2.0f;
+    // might need two height values, center to top and center to bottom
+    public float forwardThickness = 0.1f; // this need to be have the diameter of the total player
 
     // Bit shift the index of the layer (8) to get a bit mask
     public int layerMask = 1 << 8;
     // This would cast rays only against colliders in layer 8.
 
     private Animator anim;
-	//private float speed = 0.0f;
 	public float animMoveSpeed = 0.0f;
 	public float animDeltaSpeed = 0.01f;
 	public float animIdleSpeed = 0.0f;
@@ -28,10 +33,10 @@ public class CharacterControllerTesting : MonoBehaviour
 	public float walkSpeed = 0.1f;
 	public float runSpeed = 0.2f;
 
-	public float gravity = -0.0981f;
-	public float maxFallVelocity = -0.1f;
+    // the current gravity value is contained in the universal vector, gravity increment is added to its y component
+    public float gravityIncrement = -0.0981f; // this is the amount each frame the gravity value changes
+	public float maxFallVelocity = -0.1f; // the maximum value to displace the character
 
-	//public float magnitudeJumpAcceptance = 1.0f;
 	public float groundDistanceCheck = 0.1f;
 
 	public float turnSmoothTime = 0.0f;
@@ -50,7 +55,6 @@ public class CharacterControllerTesting : MonoBehaviour
 	public float initialJumpVelocity = 1.0f;
 	public float initialHighJumpVelocity = 2.0f;
 	public Vector2 initialLongJumpVelocity = new Vector2(1.0f, 1.0f); // length and height
-    //public float jumpDirectionalMomentumDecay = 0.99f;
     
     
     
@@ -72,52 +76,16 @@ public class CharacterControllerTesting : MonoBehaviour
 	// that value will be used to move the player up, and gravity will reduce it
 	// when grounded the y component will be set to zero
 	public Vector3 universalMovementVector = new Vector3(0, 0, 0);
-	//public Vector3 universalMovementVectorDelta = new Vector3(0, 0, 0);
-
-
-	//bool forcedFall = false;
-	//public float moveBackGradient = 1.0f;
-	//Vector3 moveBack;
-
 	public float slopeSlipSpeed = 0.1f;
-
-
 	public bool InputAccepted = true;
-
-
 	public Vector3 extraRotationTranslationVector = Vector3.zero;
-
-
-
-
-
 	public float groundPoundTimer = 0.0f;
 	public float groundPoundTimeLimit = 4.0f;
-
-
-    float limitXP;
-    float limitXN;
-    float limitYP;
-    float limitYN;
-    float limitZP;
-    float limitZN;
-
-
-    //public float forwardDistanceCheck = 0.1f;
-    //public float moveBackValue = 0.1f;
-    //public Vector3 fallingMoveBack = new Vector3(0, 0, 0);
 
     // Start is called before the first frame update
     void Start(){
         // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
         layerMask = ~layerMask;
-
-        limitXP = initialLongJumpVelocity.x;
-        limitXN = -initialLongJumpVelocity.x;
-        limitYP = initialHighJumpVelocity;
-        limitYN = maxFallVelocity;
-        limitZP = initialLongJumpVelocity.x;
-        limitZN = -initialLongJumpVelocity.x;
 
         PrevPos = transform.position;
 		NewPos = transform.position;
@@ -129,13 +97,7 @@ public class CharacterControllerTesting : MonoBehaviour
 	}
 
 	// Update is called once per frame
-	void Update(){
-		//Debug.Log(characterState);
-        /*
-		NewPos = transform.position;
-		ObjVelocity = (NewPos - PrevPos)/Time.deltaTime;
-		PrevPos = NewPos;
-        */
+	void FixedUpdate(){
 		// first we check for "no input status"
 		// then collect the inputs from the player
 		// enter the function call from current character state
@@ -214,362 +176,145 @@ public class CharacterControllerTesting : MonoBehaviour
         // from the player's front radius, we want the front of the player right on the wall
         // then after all limits are determined we move the player in the x, y, z by smaller of the two values (limits and vector)
 
-        float limitXPt = limitXP; // P = positive, N = negative, t = temporary
-        float limitXNt = limitXN;
-        float limitYPt = limitYP;
-        float limitYNt = limitYN;
-        float limitZPt = limitZP;
-        float limitZNt = limitZN;
+        bool xzModified = false;
+        bool yModified = false;
 
-        /*
-        // upward raycast
-        // the upward ray cast must react to any normal.y < -0.09 (5 degrees)
-        RaycastHit hitUpward;
+        Vector3 XZ = new Vector3(universalMovementVector.x, 0, universalMovementVector.z);
+        Vector3 Y = new Vector3(0, universalMovementVector.y, 0);
+
+
+        RaycastHit hitDownward;
         // remember the distance is based off the universalMovementVector
         // we only want the x and z components of the universalMovementVector, x and z limits are identical
         // can use either for distance, and then set the temps based of which is smaller the current temps or the
         // new calculated temps
         // we want the player's thickness included in the raycast
-        if (Physics.Raycast(transform.position, transform.up, out hitUpward, limitXP + height, layerMask))
+        //Debug.Log(Y.y + " " + downwardThickness);
+        float trans = -(Y.y - downwardThickness) + downwardHeight;
+        Debug.Log(trans);
+        if (Physics.Raycast(transform.position + new Vector3(0, downwardHeight, 0), -transform.up, out hitDownward, trans, layerMask))
         {
             // we found something but the normal.y might be >= 0.09
-            if (hitUpward.normal.y <= -0.09f) // a ceiling is detected
+            //Debug.Log(hitDownward.normal);
+            if (hitDownward.normal.y > 0.09f)
             {
-                Debug.Log("ceiling within range, determine limits to move by");
-                // the y value is less than 0.09 which means its a wall
-                // must set the limits for the x and z values, forward means maximum value added to x
-                // but we could be moving in the -x direction
-                // we don't care about y so don't need to account for the height of the character
-                Vector3 initialTranslation = hitForward.point - transform.position;
-                // we take the hitpoint as the absolute maximum the player can travel in the forward direction
-                // toward that point and remove the thickness, thus limit actually means a position, not a translation
-                Vector3 playerTranslationVector = initialTranslation - (initialTranslation.normalized * thickness);
-                // we now have a translation convert this to limits
-                // the vector has x and z components if they are negative
-                if (initialTranslation.x >= 0)
-                {
-                    // moving in the +x direction
-                    limitXPt = Mathf.Min(limitXPt, playerTranslationVector.x);
-                }
-                else
-                {
-                    limitXNt = Mathf.Max(limitXNt, playerTranslationVector.x);
-                }
-                if (initialTranslation.z >= 0)
-                {
-                    // moving in the -x direction
-                    limitZPt = Mathf.Min(limitZPt, playerTranslationVector.z);
-                }
-                else
-                {
-                    limitZNt = Mathf.Max(limitZNt, playerTranslationVector.z);
-                }
+                // a floor is detected
+                Debug.Log("floor is hit");
+                float translator = hitDownward.point.y + downwardThickness;
+                //transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+                transform.position = new Vector3(transform.position.x, translator, transform.position.z);
+                yModified = true;
+                isGrounded = true;
             }
-            // the limits in the x and z directions regarding what the forward vector finds are set
+            else
+            {
+                isGrounded = false;
+            }
         }
         else
         {
-            //Debug.DrawRay(transform.position, transform.forward * 1000, Color.white);
-            //Debug.Log("Did not Hit");
-            // there is nothing so do nothing
+            Debug.Log("not found");
+            isGrounded = false;
         }
-        */
+
+        //Physics.Raycast(transform.position, transform.forward, out hit, 1.0f, layerMask
 
 
 
-        // downward raycast
-        // the downward raycast will check if the character is grounded and also if the slope is within range
-        // must react to any normal.y > 0.09
 
 
-        // these four ray casts must be done at the height of the character
 
-        // backward raycast
-        // this is mostly used for when the character is moving backward by terrain or enemy
-        // the backward raycast will check if there is a wall behind the player by its normal
-        // if the normal.y >= 0.09 then we have a floor/slippery floor thus we do not react by the backward raycast
-        // that will be for the downward raycast to check
-        RaycastHit hitBackward;
+        // these three ray casts must be done at the varying heights of the character
+        RaycastHit hitForwardTop;
         // remember the distance is based off the universalMovementVector
         // we only want the x and z components of the universalMovementVector, x and z limits are identical
         // can use either for distance, and then set the temps based of which is smaller the current temps or the
         // new calculated temps
         // we want the player's thickness included in the raycast
-        if (Physics.Raycast(transform.position + new Vector3(0, height, 0), transform.forward, out hitBackward, limitXP + thickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0), XZ, out hitForwardTop, XZ.magnitude + forwardThickness, layerMask))
         {
             // we found something but the normal.y might be >= 0.09
-            if (hitBackward.normal.y <= -0.09f)
+            if (hitForwardTop.normal.y < -0.09f)
             {
                 // a ceiling is detected do nothing, that is for the hitUpward
             }
-            else if (hitBackward.normal.y >= 0.09f)
+            else if (hitForwardTop.normal.y > 0.09f)
             {
                 // a floor is detected do nothing, that is for the hitDownward
             }
             else
             {
-                Debug.Log("wall within range, determine limits to move by");
-                // the y value is less than 0.09 which means its a wall
-                // must set the limits for the x and z values, forward means maximum value added to x
-                // but we could be moving in the -x direction
-                // we don't care about y so don't need to account for the height of the character
-                Vector3 initialTranslation = hitBackward.point - transform.position;
-                // we take the hitpoint as the absolute maximum the player can travel in the forward direction
-                // toward that point and remove the thickness, thus limit actually means a position, not a translation
-                Vector3 playerTranslationVector = initialTranslation - (initialTranslation.normalized * thickness);
-                // we now have a translation convert this to limits
-                // the vector has x and z components if they are negative
-                if (initialTranslation.x >= 0)
-                {
-                    // moving in the +x direction
-                    limitXPt = Mathf.Min(limitXPt, playerTranslationVector.x);
-                }
-                else
-                {
-                    limitXNt = Mathf.Max(limitXNt, playerTranslationVector.x);
-                }
-                if (initialTranslation.z >= 0)
-                {
-                    // moving in the -x direction
-                    limitZPt = Mathf.Min(limitZPt, playerTranslationVector.z);
-                }
-                else
-                {
-                    limitZNt = Mathf.Max(limitZNt, playerTranslationVector.z);
-                }
+                Debug.Log("wall is hit");
+                Vector3 translator = hitForwardTop.point + hitForwardTop.normal * forwardThickness;
+                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+                xzModified = true;
             }
-            // the limits in the x and z directions regarding what the forward vector finds are set
         }
-        else
-        {
-            //Debug.DrawRay(transform.position, transform.forward * 1000, Color.white);
-            //Debug.Log("Did not Hit");
-            // there is nothing so do nothing
-        }
-
-
-
-
-
-
-        // forward raycast
-        // the forward raycast will check if there is a wall infront of the player by its normal
-        // if the normal.y >= 0.09 then we have a floor/slippery floor thus we do not react by the forward raycast
-        // that will be for the downward raycast to check
-        RaycastHit hitForward;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
-        // we want the player's thickness included in the raycast
-        if (Physics.Raycast(transform.position + new Vector3(0, height, 0), transform.forward, out hitForward, limitXP + thickness, layerMask))
-        {
-            // we found something but the normal.y might be >= 0.09
-            if (hitForward.normal.y <= -0.09f)
-            {
-                // a ceiling is detected do nothing, that is for the hitUpward
-            }
-            else if (hitForward.normal.y >= 0.09f)
-            {
-                // a floor is detected do nothing, that is for the hitDownward
-            }
-            else
-            {
-                Debug.Log("wall within range, determine limits to move by");
-                // the y value is less than 0.09 which means its a wall
-                // must set the limits for the x and z values, forward means maximum value added to x
-                // but we could be moving in the -x direction
-                // we don't care about y so don't need to account for the height of the character
-                Vector3 initialTranslation = hitForward.point - transform.position;
-                // we take the hitpoint as the absolute maximum the player can travel in the forward direction
-                // toward that point and remove the thickness, thus limit actually means a position, not a translation
-                Vector3 playerTranslationVector = initialTranslation - (initialTranslation.normalized * thickness);
-                // we now have a translation convert this to limits
-                // the vector has x and z components if they are negative
-                if(initialTranslation.x >= 0)
-                {
-                    // moving in the +x direction
-                    limitXPt = Mathf.Min(limitXPt, playerTranslationVector.x);
-                }
-                else
-                {
-                    limitXNt = Mathf.Max(limitXNt, playerTranslationVector.x);
-                }
-                if (initialTranslation.z >= 0)
-                {
-                    // moving in the -x direction
-                    limitZPt = Mathf.Min(limitZPt, playerTranslationVector.z);
-                }
-                else
-                {
-                    limitZNt = Mathf.Max(limitZNt, playerTranslationVector.z);
-                }
-            }
-            // the limits in the x and z directions regarding what the forward vector finds are set
-        }
-        else
-        {
-            //Debug.DrawRay(transform.position, transform.forward * 1000, Color.white);
-            //Debug.Log("Did not Hit");
-            // there is nothing so do nothing
-        }
-
-
-
-
-
-
-
-        // right raycast
-        // the right raycast will check if there is a wall beside of the player by its normal
-        // if the normal.y >= 0.09 then we have a floor/slippery floor thus we do not react by the right raycast
-        // that will be for the downward raycast to check
-        RaycastHit hitRight;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
-        // we want the player's thickness included in the raycast
-        if (Physics.Raycast(transform.position + new Vector3(0, height, 0), transform.right, out hitRight, limitXP + thickness, layerMask))
-        {
-            // we found something but the normal.y might be >= 0.09
-            if (hitRight.normal.y <= -0.09f)
-            {
-                // a ceiling is detected do nothing, that is for the hitUpward
-            }
-            else if (hitRight.normal.y >= 0.09f)
-            {
-                // a floor is detected do nothing, that is for the hitDownward
-            }
-            else
-            {
-                Debug.Log("wall within range, determine limits to move by");
-                // the y value is less than 0.09 which means its a wall
-                // must set the limits for the x and z values, forward means maximum value added to x
-                // but we could be moving in the -x direction
-                // we don't care about y so don't need to account for the height of the character
-                Vector3 initialTranslation = hitRight.point - transform.position;
-                // we take the hitpoint as the absolute maximum the player can travel in the forward direction
-                // toward that point and remove the thickness, thus limit actually means a position, not a translation
-                Vector3 playerTranslationVector = initialTranslation - (initialTranslation.normalized * thickness);
-                // we now have a translation convert this to limits
-                // the vector has x and z components if they are negative
-                if (initialTranslation.x >= 0)
-                {
-                    // moving in the +x direction
-                    limitXPt = Mathf.Min(limitXPt, playerTranslationVector.x);
-                }
-                else
-                {
-                    limitXNt = Mathf.Max(limitXNt, playerTranslationVector.x);
-                }
-                if (initialTranslation.z >= 0)
-                {
-                    // moving in the -x direction
-                    limitZPt = Mathf.Min(limitZPt, playerTranslationVector.z);
-                }
-                else
-                {
-                    limitZNt = Mathf.Max(limitZNt, playerTranslationVector.z);
-                }
-            }
-            // the limits in the x and z directions regarding what the forward vector finds are set
-        }
-        else
-        {
-            //Debug.DrawRay(transform.position, transform.forward * 1000, Color.white);
-            //Debug.Log("Did not Hit");
-            // there is nothing so do nothing
-        }
-
 
 
 
 
 
         
-        // left raycast
-        // the left raycast will check if there is a wall beside of the player by its normal
-        // if the normal.y >= 0.09 then we have a floor/slippery floor thus we do not react by the left raycast
-        // that will be for the downward raycast to check
-        RaycastHit hitLeft;
+        RaycastHit hitForwardMiddle;
         // remember the distance is based off the universalMovementVector
         // we only want the x and z components of the universalMovementVector, x and z limits are identical
         // can use either for distance, and then set the temps based of which is smaller the current temps or the
         // new calculated temps
         // we want the player's thickness included in the raycast
-        if (Physics.Raycast(transform.position + new Vector3(0, height, 0), -transform.right, out hitLeft, limitXP + thickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle, 0), XZ, out hitForwardMiddle, XZ.magnitude + forwardThickness, layerMask))
         {
             // we found something but the normal.y might be >= 0.09
-            if (hitLeft.normal.y <= -0.09f)
+            if (hitForwardMiddle.normal.y <= -0.09f)
             {
                 // a ceiling is detected do nothing, that is for the hitUpward
             }
-            else if (hitLeft.normal.y >= 0.09f)
+            else if (hitForwardMiddle.normal.y >= 0.09f)
             {
                 // a floor is detected do nothing, that is for the hitDownward
             }
             else
             {
-                Debug.Log("wall within range, determine limits to move by");
-                // the y value is less than 0.09 which means its a wall
-                // must set the limits for the x and z values, forward means maximum value added to x
-                // but we could be moving in the -x direction
-                // we don't care about y so don't need to account for the height of the character
-                Vector3 initialTranslation = hitLeft.point - transform.position;
-                // we take the hitpoint as the absolute maximum the player can travel in the forward direction
-                // toward that point and remove the thickness, thus limit actually means a position, not a translation
-                Vector3 playerTranslationVector = initialTranslation - (initialTranslation.normalized * thickness);
-                // we now have a translation convert this to limits
-                // the vector has x and z components if they are negative
-                if (initialTranslation.x >= 0)
-                {
-                    // moving in the +x direction
-                    limitXPt = Mathf.Min(limitXPt, playerTranslationVector.x);
-                }
-                else
-                {
-                    limitXNt = Mathf.Max(limitXNt, playerTranslationVector.x);
-                }
-                if (initialTranslation.z >= 0)
-                {
-                    // moving in the -x direction
-                    limitZPt = Mathf.Min(limitZPt, playerTranslationVector.z);
-                }
-                else
-                {
-                    limitZNt = Mathf.Max(limitZNt, playerTranslationVector.z);
-                }
+                Debug.Log("wall is hit");
+                Vector3 translator = hitForwardMiddle.point + hitForwardMiddle.normal * forwardThickness;
+                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+                xzModified = true;
             }
-            // the limits in the x and z directions regarding what the forward vector finds are set
         }
-        else
+
+        RaycastHit hitForwardBottom;
+        // remember the distance is based off the universalMovementVector
+        // we only want the x and z components of the universalMovementVector, x and z limits are identical
+        // can use either for distance, and then set the temps based of which is smaller the current temps or the
+        // new calculated temps
+        // we want the player's thickness included in the raycast
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), XZ, out hitForwardBottom, XZ.magnitude + forwardThickness, layerMask))
         {
-            //Debug.DrawRay(transform.position, transform.forward * 1000, Color.white);
-            //Debug.Log("Did not Hit");
-            // there is nothing so do nothing
+            // we found something but the normal.y might be >= 0.09
+            if (hitForwardBottom.normal.y <= -0.09f)
+            {
+                // a ceiling is detected do nothing, that is for the hitUpward
+            }
+            else if (hitForwardBottom.normal.y >= 0.09f)
+            {
+                // a floor is detected do nothing, that is for the hitDownward
+            }
+            else
+            {
+                Debug.Log("wall is hit");
+                Vector3 translator = hitForwardBottom.point + hitForwardBottom.normal * forwardThickness;
+                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+                xzModified = true;
+            }
         }
-        
+
+        MoveCharacter(universalMovementVector, xzModified, yModified);
 
 
-
-
-
-
-        // right here we can determine if the character is being squished, if limitPt < limitNt then the character
-        // is being told to move up and down thus a squish, might not need to use this as we can be careful not to 
-        // have platforms move such that squishes are possible
-
-        universalMovementVector.x = Mathf.Min(universalMovementVector.x, limitXPt); // x can't be bigger than limitXPt
-        universalMovementVector.x = Mathf.Max(universalMovementVector.x, limitXNt); // x can't be smaller than limitXNt
-        universalMovementVector.z = Mathf.Min(universalMovementVector.z, limitZPt); // z can't be bigger than limitZPt
-        universalMovementVector.z = Mathf.Max(universalMovementVector.z, limitZNt); // z can't be smaller than limitZNt
-        universalMovementVector.y = Mathf.Min(universalMovementVector.y, limitYPt); // y can't be bigger than limitYPt
-        universalMovementVector.y = Mathf.Max(universalMovementVector.y, limitYNt); // y can't be smaller than limitYNt
-        MoveCharacter(universalMovementVector);
-
-
-
+        //Debug.DrawRay(transform.position + new Vector3(0, heightTop, 0), transform.forward * 10, Color.yellow);
+        //Debug.DrawRay(transform.position + new Vector3(0, heightBottom, 0), -transform.up * 10, Color.yellow);
+        //if (Physics.Raycast(transform.position + new Vector3(0, downwardHeight, 0), Y, out hitDownward, -(Y.y - downwardThickness) + downwardHeight + 1.0f, layerMask))
+        //Physics.Raycast(transform.position, Y, out hitDownward, Y.y - downwardThickness, layerMask
         // a ceiling is defined by any surface with normal.y < -0.09 (5 degrees)
         // a wall is defined by any surface with -0.09 <= normal.y <= 0.09
         // a slippery floor is defined by any surface with 0.09 < normal.y < 0.5 (30 degrees = 60 degree slope)
@@ -579,10 +324,19 @@ public class CharacterControllerTesting : MonoBehaviour
 
     }
 
-    // define later
-    void MoveCharacter(Vector3 movement)
+    
+    void MoveCharacter(Vector3 movement, bool xz, bool y)
     {
         // do not use Time.deltaTime
+        if (xz)
+        {
+            movement.x = 0;
+            movement.z = 0;
+        }
+        if (y)
+        {
+            movement.y = 0;
+        }
         transform.Translate(movement, Space.World);
     }
 
@@ -648,7 +402,7 @@ public class CharacterControllerTesting : MonoBehaviour
 			if (input != Vector2.zero) {
 				// all this is to rotate the character in the desired running direction
 				float targetRotation = Mathf.Atan2 (input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-				transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
+                transform.eulerAngles = Vector3.up * targetRotation;// Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
 			}
 			else{
 				// no input so we move back to stationary
@@ -711,7 +465,10 @@ public class CharacterControllerTesting : MonoBehaviour
         // we might not need to recalulate the x and z since universalMovementVector.xz are not changing
 		universalMovementVector.x = initialLongJumpVelocity.x;
 		universalMovementVector.z = initialLongJumpVelocity.y; // z here is actually the y component of this 2D vector
-        universalMovementVector.y += gravity;
+
+
+        
+        universalMovementVector.y += gravityIncrement;
 		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 
 		//universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
@@ -736,7 +493,9 @@ public class CharacterControllerTesting : MonoBehaviour
 
         universalMovementVector.x = transform.forward.x * currentSpeed;
         universalMovementVector.z = transform.forward.z * currentSpeed;
-		universalMovementVector.y += gravity;
+
+
+		universalMovementVector.y += gravityIncrement;
 		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 
 		//universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
@@ -761,7 +520,9 @@ public class CharacterControllerTesting : MonoBehaviour
 
         universalMovementVector.x = transform.forward.x * currentSpeed;
         universalMovementVector.z = transform.forward.z * currentSpeed;
-		universalMovementVector.y += gravity;
+
+
+		universalMovementVector.y += gravityIncrement;
 		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 
 		//universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
@@ -778,10 +539,13 @@ public class CharacterControllerTesting : MonoBehaviour
 
 	void FallingState(){
 		if(isGrounded){
+            //Debug.Log("grounded");
 			characterState = CharacterState.RUNNING; // see if stationary is more appropriate
 		}
 		else{
-			universalMovementVector.y += gravity;
+
+
+			universalMovementVector.y += gravityIncrement;
 			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 			//if(fallingMoveBack.magnitude != 0){
 				//universalMovementVector = Vector3.zero;

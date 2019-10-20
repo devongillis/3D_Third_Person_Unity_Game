@@ -364,6 +364,18 @@ MeshCollider:
   m_Convex: 0
   m_CookingOptions: 14
   m_Mesh: {fileID: -462981019419857548, guid: dcdc692fc5b1c51408b9efe572926735, type: 3}
+--- !u!114 &344106005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 344105999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e5adcee6676f264a8e43ae7dd71eefa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &359840001
 GameObject:
   m_ObjectHideFlags: 0
@@ -1048,7 +1060,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1000814505}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -39.577553, y: 10.764709, z: -6.2}
+  m_LocalPosition: {x: -40.027554, y: 4.51, z: -6.12}
   m_LocalScale: {x: 10, y: 10, z: 10}
   m_Children: []
   m_Father: {fileID: 0}
@@ -1535,6 +1547,31 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -1504981713932161579, guid: dcdc692fc5b1c51408b9efe572926735,
+        type: 3}
+      propertyPath: m_Materials.Array.data[0]
+      value: 
+      objectReference: {fileID: 2100000, guid: 01393e25876147e40b46a59c08c7ae2e, type: 2}
+    - target: {fileID: -1504981713932161579, guid: dcdc692fc5b1c51408b9efe572926735,
+        type: 3}
+      propertyPath: m_Materials.Array.data[1]
+      value: 
+      objectReference: {fileID: 2100000, guid: 01393e25876147e40b46a59c08c7ae2e, type: 2}
+    - target: {fileID: -1504981713932161579, guid: dcdc692fc5b1c51408b9efe572926735,
+        type: 3}
+      propertyPath: m_Materials.Array.data[2]
+      value: 
+      objectReference: {fileID: 2100000, guid: 01393e25876147e40b46a59c08c7ae2e, type: 2}
+    - target: {fileID: -1504981713932161579, guid: dcdc692fc5b1c51408b9efe572926735,
+        type: 3}
+      propertyPath: m_Materials.Array.data[3]
+      value: 
+      objectReference: {fileID: 2100000, guid: 01393e25876147e40b46a59c08c7ae2e, type: 2}
+    - target: {fileID: -1504981713932161579, guid: dcdc692fc5b1c51408b9efe572926735,
+        type: 3}
+      propertyPath: m_Materials.Array.data[4]
+      value: 
+      objectReference: {fileID: 2100000, guid: 01393e25876147e40b46a59c08c7ae2e, type: 2}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: dcdc692fc5b1c51408b9efe572926735, type: 3}
 --- !u!1 &1353457661
@@ -1676,7 +1713,7 @@ PrefabInstance:
     - target: {fileID: 1040869968667780165, guid: 95fa10d17c00a2b418f59bc3d0daf5e1,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 7.34
+      value: 68.2
       objectReference: {fileID: 0}
     - target: {fileID: 1040869968667780165, guid: 95fa10d17c00a2b418f59bc3d0daf5e1,
         type: 3}
@@ -1772,8 +1809,12 @@ MonoBehaviour:
   distToGround: 0
   isGrounded: 1
   slopeVector: {x: 0, y: 0, z: 0}
-  height: 1
-  thickness: 1.5
+  forwardHeightTop: 1
+  forwardHeightMiddle: 1
+  forwardHeightBottom: 1
+  downwardThickness: 0.1
+  downwardHeight: 3
+  forwardThickness: 0.1
   layerMask: 256
   animMoveSpeed: 0
   animDeltaSpeed: 0.01
@@ -1781,14 +1822,14 @@ MonoBehaviour:
   animWalkSpeed: 0.6
   animRunSpeed: 1
   characterState: 0
-  walkSpeed: 0.1
-  runSpeed: 6
-  gravity: -9.81
-  maxFallVelocity: -10
+  walkSpeed: 0.15
+  runSpeed: 0.3
+  gravityIncrement: -0.01
+  maxFallVelocity: -1
   groundDistanceCheck: 0.1
   turnSmoothTime: 0
   speedSmoothTime: 0
-  initialJumpVelocity: 1
+  initialJumpVelocity: 0.5
   initialHighJumpVelocity: 1
   initialLongJumpVelocity: {x: 1, y: 1}
   running: 0
@@ -2509,7 +2550,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2003408016}
   m_LocalRotation: {x: -0.003329018, y: 0.09144104, z: -0.03622944, w: 0.9951457}
-  m_LocalPosition: {x: -36.5, y: 10.764709, z: 22.5}
+  m_LocalPosition: {x: -36.95, y: 4.51, z: 22.58}
   m_LocalScale: {x: 10, y: 10, z: 41.73}
   m_Children: []
   m_Father: {fileID: 0}
