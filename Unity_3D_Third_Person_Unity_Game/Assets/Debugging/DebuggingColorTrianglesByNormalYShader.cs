@@ -72,19 +72,29 @@ public class DebuggingColorTrianglesByNormalYShader : MonoBehaviour
                 // orange
                 newColors[i] = new Color32(255, 165, 0, 255);
             }
-            else  if (normal.y >= -0.09 && normal.y <= 0.09f)
+            else if (normal.y >= -0.174f && normal.y < -0.09f)
+            {
+                // dark blue wall facing down
+                newColors[i] = new Color32(0, 0, 139, 255);
+            }
+            else  if (normal.y >= -0.09f && normal.y <= 0.09f)
             {
                 // wall
                 // blue
-                newColors[i] = new Color32(0, 0, 255, 255);
+                newColors[i] = new Color32(0, 191, 255, 255);
             }
-            else if(normal.y >= 0.707)
+            else if (normal.y > 0.09f && normal.y <= 0.174f)
+            {
+                // light blue wall facing up
+                newColors[i] = new Color32(135, 206, 250, 255);
+            }
+            else if(normal.y >= 0.707f)
             {
                 // regular floor
                 // light green
                 newColors[i] = new Color32(124, 252, 0, 255);
             }
-            else if(normal.y < 0.707 && normal.y >= 0.5)
+            else if(normal.y < 0.707f && normal.y >= 0.5f)
             {
                 // slippery floor
                 // dark green
