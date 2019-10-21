@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &4577496583848102763
+--- !u!1 &3826339820254169925
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,46 +8,46 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 710954368052132216}
-  - component: {fileID: 8396635517374776142}
-  - component: {fileID: 2862704894899830711}
-  - component: {fileID: 7446652483039319042}
+  - component: {fileID: 234954725097240918}
+  - component: {fileID: 9086501173497119584}
+  - component: {fileID: 3253065436903554969}
+  - component: {fileID: 5059810525538225092}
   m_Layer: 0
-  m_Name: spiral_hill_redo
+  m_Name: base_platform_five
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &710954368052132216
+--- !u!4 &234954725097240918
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4577496583848102763}
-  m_LocalRotation: {x: 0, y: -0.9063079, z: 0, w: 0.42261827}
-  m_LocalPosition: {x: 55.5, y: 0.2, z: 23.144806}
-  m_LocalScale: {x: 12, y: 12, z: 12}
+  m_GameObject: {fileID: 3826339820254169925}
+  m_LocalRotation: {x: 0, y: 0.9837287, z: -0, w: -0.17966075}
+  m_LocalPosition: {x: -135.2, y: 40, z: -103.4}
+  m_LocalScale: {x: 8, y: 2, z: 8}
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
-  m_LocalEulerAnglesHint: {x: 0, y: -130, z: 0}
---- !u!33 &8396635517374776142
+  m_LocalEulerAnglesHint: {x: 0, y: 200.7, z: 0}
+--- !u!33 &9086501173497119584
 MeshFilter:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4577496583848102763}
-  m_Mesh: {fileID: -2124705421725058983, guid: 3ed7adea686484d46a238639b7e695fe, type: 3}
---- !u!23 &2862704894899830711
+  m_GameObject: {fileID: 3826339820254169925}
+  m_Mesh: {fileID: -462981019419857548, guid: 1b56113f1be9d66408c22ed8af69d197, type: 3}
+--- !u!23 &3253065436903554969
 MeshRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4577496583848102763}
+  m_GameObject: {fileID: 3826339820254169925}
   m_Enabled: 1
   m_CastShadows: 1
   m_ReceiveShadows: 1
@@ -58,10 +58,8 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: dbbf484735e8c1643875dc344c5b20ec, type: 2}
-  - {fileID: 2100000, guid: 5015fc9b7a2e14e47837c175f49998d3, type: 2}
-  - {fileID: 2100000, guid: afebbcf6f4c431e41be213000458711f, type: 2}
-  - {fileID: 2100000, guid: 7eb879a4916bdaf4e8703c2991137d1b, type: 2}
+  - {fileID: 2100000, guid: 4bcd7333ada5eb14d91df12667cd0dcc, type: 2}
+  - {fileID: 2100000, guid: 93b4252dcbb5aa743939b84a34ef1783, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -82,22 +80,17 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!95 &7446652483039319042
-Animator:
-  serializedVersion: 3
+--- !u!64 &5059810525538225092
+MeshCollider:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4577496583848102763}
+  m_GameObject: {fileID: 3826339820254169925}
+  m_Material: {fileID: 0}
+  m_IsTrigger: 0
   m_Enabled: 1
-  m_Avatar: {fileID: 9000000, guid: 3ed7adea686484d46a238639b7e695fe, type: 3}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
+  serializedVersion: 3
+  m_Convex: 0
+  m_CookingOptions: 14
+  m_Mesh: {fileID: -462981019419857548, guid: 1b56113f1be9d66408c22ed8af69d197, type: 3}

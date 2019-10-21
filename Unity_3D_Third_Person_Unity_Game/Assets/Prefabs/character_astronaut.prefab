@@ -1467,9 +1467,8 @@ GameObject:
   - component: {fileID: 1040869968667780165}
   - component: {fileID: 6803937600619552534}
   - component: {fileID: 7625820434354926236}
-  - component: {fileID: 2592936059199777885}
-  - component: {fileID: 6242669349842474472}
   - component: {fileID: 3152297277261619458}
+  - component: {fileID: 211242132342938267}
   m_Layer: 0
   m_Name: character_astronaut
   m_TagString: Player
@@ -1525,63 +1524,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   upper: 100
---- !u!114 &2592936059199777885
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8705450201674343642}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d62397d827bcb9340bd0fa91a4ad56d7, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  animMoveSpeed: 0
-  animDeltaSpeed: 0.12
-  animIdleSpeed: 0
-  animWalkSpeed: 0.6
-  animRunSpeed: 1
-  characterState: 0
-  walkSpeed: 10
-  runSpeed: 20
-  gravity: -70
-  maxFallVelocity: -100
-  magnitudeJumpAcceptance: 15
-  groundDistanceCheck: 1.1
-  turnSmoothTime: 0
-  speedSmoothTime: 0.1
-  distToGround: 0
-  initialJumpVelocity: 25
-  initialHighJumpVelocity: 35
-  initialLongJumpVelocity: {x: 20, y: 20}
-  jumpDirectionalMomentumDecay: 0.96
-  running: 0
-  universalMovementVector: {x: 0, y: 0, z: 0}
-  moveBackGradient: 15
-  slopeSlipSpeed: 10
-  InputAccepted: 1
-  extraRotationTranslationVector: {x: 0, y: 0, z: 0}
-  groundPoundTimer: 0
-  groundPoundTimeLimit: 1
---- !u!143 &6242669349842474472
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8705450201674343642}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Height: 4.15
-  m_Radius: 0.85
-  m_SlopeLimit: 85
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.09
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 2.06, z: 0}
 --- !u!114 &3152297277261619458
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1597,6 +1539,60 @@ MonoBehaviour:
   time: 0.5
   ticks: 10
   button: 0
+--- !u!114 &211242132342938267
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8705450201674343642}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 150daf1e782711142a885bc89160b045, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  distToGround: 0
+  isGrounded: 1
+  slopeVector: {x: 0, y: 0, z: 0}
+  forwardHeightTop: 4
+  forwardHeightMiddle: 2.375
+  forwardHeightBottom: 0.75
+  downwardThickness: 0
+  downwardHeight: 3
+  upwardHeight: 2
+  forwardThickness: 0.3
+  wallUpperLimitNormalY: 0.174
+  wallLowerLimitNormalY: -0.174
+  floorUpperLimitNormalY: 1
+  floorLowerLimitNormalY: 0.707
+  slipperyFloorUpperLimitNormalY: 0.707
+  slipperyFloorLowerLimitNormalY: 0.5
+  ceilingUpperLimitNormalY: -0.5
+  slopeDownwardCheckDistance: 0
+  slopeWallMinimumForwardSpeed: 0
+  layerMask: 256
+  animMoveSpeed: 0
+  animDeltaSpeed: 0.01
+  animIdleSpeed: 0
+  animWalkSpeed: 0.6
+  animRunSpeed: 1
+  characterState: 0
+  walkSpeed: 0.15
+  runSpeed: 0.3
+  gravityIncrement: -0.01
+  maxFallVelocity: -1
+  groundDistanceCheck: 0.1
+  turnSmoothTime: 1
+  speedSmoothTime: 1
+  initialJumpVelocity: 0.5
+  initialHighJumpVelocity: 1
+  initialLongJumpVelocity: {x: 1, y: 1}
+  running: 0
+  universalMovementVector: {x: 0, y: 0, z: 0}
+  platformRotationVector: {x: 0, y: 0, z: 0}
+  InputAccepted: 1
+  groundPoundTimer: 0
+  groundPoundTimeLimit: 60
 --- !u!1 &8891278876208962716
 GameObject:
   m_ObjectHideFlags: 0
