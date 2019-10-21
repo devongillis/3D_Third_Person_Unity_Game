@@ -178,7 +178,7 @@ public class CharacterControllerTesting : MonoBehaviour
         // we are moving vertically but not horizontally thus we have no direction for wall collisions
         // must use the transform.forward, and do a vector in all four directions
         RaycastHit noDirection;
-        if (Physics.Raycast(transform.position, transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
             if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
             {
@@ -193,7 +193,7 @@ public class CharacterControllerTesting : MonoBehaviour
                 // a surface was found but it does not meet the definition of a wall
             }
         }
-        if (Physics.Raycast(transform.position, transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
             if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
             {
@@ -208,7 +208,7 @@ public class CharacterControllerTesting : MonoBehaviour
                 // a surface was found but it does not meet the definition of a wall
             }
         }
-        if (Physics.Raycast(transform.position, -transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), -transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
             if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
             {
@@ -223,7 +223,7 @@ public class CharacterControllerTesting : MonoBehaviour
                 // a surface was found but it does not meet the definition of a wall
             }
         }
-        if (Physics.Raycast(transform.position, -transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), -transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
             if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
             {
