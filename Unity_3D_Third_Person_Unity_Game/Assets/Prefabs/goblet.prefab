@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 1238933518104730678}
   - component: {fileID: 7812221187173000704}
   - component: {fileID: 4563866798200576761}
-  - component: {fileID: 9204109391343759692}
   m_Layer: 0
   m_Name: goblet
   m_TagString: Untagged
@@ -81,25 +80,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!95 &9204109391343759692
-Animator:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2840305306127560229}
-  m_Enabled: 0
-  m_Avatar: {fileID: 9000000, guid: fce3279a4051e274da03903053edb7c9, type: 3}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!1 &6073992187282483101
 GameObject:
   m_ObjectHideFlags: 0

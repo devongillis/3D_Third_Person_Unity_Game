@@ -61,7 +61,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	// that value will be used to move the player up, and gravity will reduce it
 	// when grounded the y component will be set to zero
 	public Vector3 universalMovementVector = new Vector3(0, 0, 0);
-
+	public Vector3 universalMovementVectorDelta = new Vector3(0, 0, 0);
 
 
 	//bool forcedFall = false;
@@ -84,6 +84,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	public float groundPoundTimeLimit = 10.0f;
 
 
+	public float forwardDistanceCheck = 0.1f;
+	//public float moveBackValue = 0.1f;
+	public Vector3 fallingMoveBack = new Vector3(0, 0, 0);
+
 	// Start is called before the first frame update
 	void Start(){
 		controller = GetComponent<CharacterController>();
@@ -100,7 +104,7 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 	// Update is called once per frame
 	void FixedUpdate(){
-		
+		//Debug.Log(characterState);
 		NewPos = transform.position;
 		ObjVelocity = (NewPos - PrevPos)/Time.deltaTime;
 		PrevPos = NewPos;
@@ -175,7 +179,8 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 			CalculateExtraRotationTranslationVector();
 			if(extraRotationTranslationVector != Vector3.zero){
-				controller.Move(extraRotationTranslationVector);
+				universalMovementVectorDelta = extraRotationTranslationVector;
+				controller.Move(universalMovementVectorDelta);
 			}
 			// now check if a jump has been called
 			// notice how we go to a jump state rather than running state if both running and jumping
@@ -230,7 +235,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			// now apply gravity, gravity is m/s^2 so multiply by Time.deltaTime twice (only during a jump or fall)
 			universalMovementVector = transform.forward * currentSpeed;
 			CalculateExtraRotationTranslationVector();
-			controller.Move(universalMovementVector * Time.deltaTime + extraRotationTranslationVector);
+
+			universalMovementVectorDelta = universalMovementVector * Time.deltaTime + extraRotationTranslationVector;
+			controller.Move(universalMovementVectorDelta);
 
 			if(jump > 0){
 				// later come up with a keyboard click tester (don't let holding down button work as jump input)
@@ -279,7 +286,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		universalMovementVector.z = ObjVelocity.z;
 		universalMovementVector.y += gravity * Time.deltaTime;
 		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-		controller.Move(universalMovementVector * Time.deltaTime);
+
+		universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
 
 		if(universalMovementVector.y <= 0.0f){
 			characterState = CharacterState.FALLING;
@@ -301,7 +310,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		universalMovementVector = new Vector3(transform.forward.x * currentSpeed, universalMovementVector.y, transform.forward.z * currentSpeed);
 		universalMovementVector.y += gravity * Time.deltaTime;
 		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-		controller.Move(universalMovementVector * Time.deltaTime);
+
+		universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
 
 		if(universalMovementVector.y <= 0.0f){
 			characterState = CharacterState.FALLING;
@@ -324,7 +335,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 
 		universalMovementVector.y += gravity * Time.deltaTime;
 		universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-		controller.Move(universalMovementVector * Time.deltaTime);
+
+		universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
 
 		if(universalMovementVector.y <= 0.0f){
 			characterState = CharacterState.FALLING;
@@ -342,8 +355,28 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		else{
 			universalMovementVector.y += gravity * Time.deltaTime;
 			universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-			controller.Move(universalMovementVector * Time.deltaTime);
+			if(fallingMoveBack.magnitude != 0){
+				universalMovementVector = Vector3.zero;
+			}
 
+			//controller.Move(universalMovementVector * Time.deltaTime /*+ fallingMoveBack*/);
+			//universalMovementVectorDelta = universalMovementVector * Time.deltaTime + fallingMoveBack;
+			universalMovementVectorDelta = universalMovementVector * Time.deltaTime + new Vector3(fallingMoveBack.x, 0, fallingMoveBack.z);
+			controller.Move(universalMovementVectorDelta);
+			//universalMovementVectorDelta = new Vector3(0, fallingMoveBack.y, 0);
+			//controller.Move(universalMovementVectorDelta);
+
+			/*
+			universalMovementVectorDelta = new Vector3(moveBack.x, 0, moveBack.z) * slopeSlipSpeed * Time.deltaTime;
+			controller.Move(universalMovementVectorDelta);
+			
+			universalMovementVectorDelta = new Vector3(0, moveBack.y * 20, 0) * slopeSlipSpeed * Time.deltaTime;
+			controller.Move(universalMovementVectorDelta);
+			*/
+
+
+			//Debug.Log("not grounded");
+			fallingMoveBack = Vector3.zero;
 			if(groundPound > 0){
 				characterState = CharacterState.GROUND_POUND;
 			}
@@ -364,8 +397,14 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 		characterState = CharacterState.STATIONARY;
 
 		universalMovementVector = Vector3.zero;
-		controller.Move(new Vector3(moveBack.x, 0, moveBack.z) * slopeSlipSpeed * Time.deltaTime);
-		controller.Move(new Vector3(0, moveBack.y * 20, 0) * slopeSlipSpeed * Time.deltaTime);
+
+
+		universalMovementVectorDelta = new Vector3(moveBack.x, 0, moveBack.z) * slopeSlipSpeed * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
+
+		universalMovementVectorDelta = new Vector3(0, moveBack.y * 20, 0) * slopeSlipSpeed * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
+
 		//Debug.Log(moveBack);
 	}
 
@@ -381,7 +420,9 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 				groundPoundTimer = 0.0f;
 			}
 			else{
-				controller.Move(new Vector3(0, maxFallVelocity, 0) * Time.deltaTime);
+				//controller.Move(new Vector3(0, maxFallVelocity, 0) * Time.deltaTime);
+				universalMovementVectorDelta = new Vector3(0, maxFallVelocity, 0) * Time.deltaTime;
+				controller.Move(universalMovementVectorDelta);
 			}
 		}
 		else{
@@ -402,27 +443,43 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	void LongJump(){
 		
 		universalMovementVector = transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0);
-		controller.Move(universalMovementVector * Time.deltaTime);
+
+		//controller.Move(universalMovementVector * Time.deltaTime);
+		universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
+
+
 		characterState = CharacterState.JUMPING_LONG;
 	}
 
 	void HighJump(){
 		
 		universalMovementVector = new Vector3(0, initialHighJumpVelocity, 0);
-		controller.Move(universalMovementVector * Time.deltaTime);
+
+		//controller.Move(universalMovementVector * Time.deltaTime);
+		universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
+
 		characterState = CharacterState.JUMPING_HIGH;
 	}
 
 	void RegularJump(){
 		
 		universalMovementVector = new Vector3(0, initialJumpVelocity, 0);
-		controller.Move(universalMovementVector * Time.deltaTime);
+
+		//controller.Move(universalMovementVector * Time.deltaTime);
+		universalMovementVectorDelta = universalMovementVector * Time.deltaTime;
+		controller.Move(universalMovementVectorDelta);
+
 		characterState = CharacterState.JUMPING_LOW;
 	}
 
 	bool IsGrounded(){
 		if(Physics.Raycast(transform.position, -Vector3.up, groundDistanceCheck)){
-			controller.Move(new Vector3(0, -groundDistanceCheck, 0));
+			//controller.Move(new Vector3(0, -groundDistanceCheck, 0));
+			universalMovementVectorDelta = new Vector3(0, -groundDistanceCheck, 0);
+			controller.Move(universalMovementVectorDelta);
+
 			return true;
 		}
 		else{
@@ -493,6 +550,10 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 	}
 
 	void OnControllerColliderHit(ControllerColliderHit hit){ // this function in unity is called inside characterController.move()
+		// there are 4 surfaces that can be found here, floor, slippery slope, wall, ceiling
+		// we ray cast in the direction of the hit from position to find the surface hit
+		// 
+
 		if(hit.collider.tag == "rotatingPlatform"){
 			return;
 		}
@@ -500,44 +561,181 @@ public class characterControllerScript_withCharacterControllerAttribute : MonoBe
 			hit.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
 			return;
 		}
-		if(characterState == CharacterState.FALLING){
-			Debug.Log(hit.normal);
-		}
-		if(hit.normal.y < -0.01f){
-			// ceiling
-		}
-		else if(hit.normal.y < 0.01f){
-			//Debug.Log("wall");
-		}
-		else if(hit.normal.y < 0.5f){
-			// slippery surface, greater than 60 degrees
-			// we must set the player into the slip state
-			// with a backward/downward vector that is proportional
-			// to the slope of the slipper surface
 
-			// the downward/backward vector is the normal vector with the
-			// value of sqrt(x^2 + z^2) switched with y
-			// so x1 = mx, z1 = mz, and m = y/sqrt(x^2 + z^2)
-			// and y = sqrt(x^2 + z^2)
-			// make y negative to reflect gravity
-			// and move x and z first then y
-			if(characterState != CharacterState.SLIPPING_NO_CONTROL){
-				characterState = CharacterState.SLIPPING_NO_CONTROL;
-				// we have not executed a slip
-				float y1 = Mathf.Sqrt(hit.normal.x * hit.normal.x + hit.normal.z * hit.normal.z);
-				float m = hit.normal.y/y1;
-				float x1 = hit.normal.x * m;
-				float z1 = hit.normal.z * m;
-				// the new vector is ready
-				moveBack = new Vector3(x1, -y1, z1); // this is a unit vector (magnitude = 1)
+
+
+
+		// raycast code to get the normal of the surface
+		RaycastHit ray1;
+		Vector3 direction = hit.point - transform.position;
+		if(Physics.Raycast(transform.position, direction, out ray1, direction.magnitude + forwardDistanceCheck)){
+			
+		}
+		else{
+			Debug.Log("error did not find surface");
+		}
+
+
+
+
+		if(ray1.normal.y >= 0.5f){
+			// floor, we do nothing
+		}
+		else if(ray1.normal.y < 0.5f && ray1.normal.y > 0.09f){
+			// slippery slope
+			// gravity wont pull us down we need to move backward first and then down
+			// we might have jumped into the slope and thus are still moving up (in the jumping state)
+			// in which case we ignore the slope, it only applies when grounded or falling
+			if(universalMovementVector.y > 0.0f){
+				return;
 			}
 			else{
-				// we are waiting for update to execute our moveback vector, so do nothing
+				// we are not falling so now we slide down the slope
+
+				// slippery surface, greater than 60 degrees
+				// we must set the player into the slip state
+				// with a backward/downward vector that is proportional
+				// to the slope of the slipper surface
+
+				// the downward/backward vector is the normal vector with the
+				// value of sqrt(x^2 + z^2) switched with y
+				// so x1 = mx, z1 = mz, and m = y/sqrt(x^2 + z^2)
+				// and y = sqrt(x^2 + z^2)
+				// make y negative to reflect gravity
+				// and move x and z first then y
+				if(characterState != CharacterState.SLIPPING_NO_CONTROL){
+					characterState = CharacterState.SLIPPING_NO_CONTROL;
+					//Debug.Log(hit.normal);
+					// we have not executed a slip
+					float y1 = Mathf.Sqrt(ray1.normal.x * ray1.normal.x + ray1.normal.z * ray1.normal.z);
+					float m = ray1.normal.y/y1;
+					float x1 = ray1.normal.x * m;
+					float z1 = ray1.normal.z * m;
+					// the new vector is ready
+					moveBack = new Vector3(x1, -y1, z1); // this is a unit vector (magnitude = 1)
+				}
+				else{
+					// we are waiting for update to execute our moveback vector, so do nothing
+				}
+
+			}
+
+		}
+		else if(ray1.normal.y < 0.09f && ray1.normal.y > -0.09f){
+			Debug.Log("found a wall" + universalMovementVector.y);
+			// we have found a wall, once again we do nothing if we are in the jumping state
+			// otherwise we must force the player to fall by measuring the slope and creating a moveback
+			// vector and fall down by the amount we lost from the collision which is the current
+			// universalmovementvectorDelta.y - (PrevPos.y - transform.position.y)
+			// apply this directly as is
+			if(universalMovementVector.y > 0.0f){
+				return;
+			}
+			else{
+				// found a wall and not jumping
+
+				fallingMoveBack = transform.position - hit.point;
+				fallingMoveBack.y = 0;
+				Debug.Log(fallingMoveBack);
+
+				/*
+				float y1 = Mathf.Sqrt(ray1.normal.x * ray1.normal.x + ray1.normal.z * ray1.normal.z);
+				float m = ray1.normal.y/y1;
+				float x1 = ray1.normal.x * m;
+				float z1 = ray1.normal.z * m;
+				// the new vector is ready
+
+				fallingMoveBack = new Vector3(-x1, -Mathf.Abs(y1), z1); // this is a unit vector (magnitude = 1)
+				// now multiply it by the value lost
+				// DOUBLE CHECK THIS ITS MAKING Y BECOME POSITIVE
+				Debug.Log("falling move back" + fallingMoveBack + " " + universalMovementVectorDelta.y + " " + PrevPos.y + " " + transform.position.y);
+				fallingMoveBack *= 1.0f;//Mathf.Abs(universalMovementVectorDelta.y - (PrevPos.y - transform.position.y));
+				Debug.Log("falling move back" + fallingMoveBack);
+				*/
 			}
 		}
 		else{
-			// regular floor
+			// ceiling do nothing yet, later cancel the momentum and begin falling	
 		}
+
+
+
+
+
+
+
+
+
+
+
+
+
+		/*
+
+		if(hit.collider.tag == "rotatingPlatform"){
+			return;
+		}
+		else if(hit.collider.tag == "switch" && characterState == CharacterState.GROUND_POUND){
+			hit.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
+			return;
+		}
+
+		RaycastHit ray;
+		if(Physics.Raycast(transform.position, Vector3.down, out ray, groundDistanceCheck)){
+			//Debug.Log(ray.normal);
+
+
+			if(ray.normal.y < -0.09f){
+				// ceiling
+			}
+			else if(ray.normal.y < 0.09f){
+				//Debug.Log("wall");
+			}
+			else if(ray.normal.y < 0.5f){
+				// slippery surface, greater than 60 degrees
+				// we must set the player into the slip state
+				// with a backward/downward vector that is proportional
+				// to the slope of the slipper surface
+
+				// the downward/backward vector is the normal vector with the
+				// value of sqrt(x^2 + z^2) switched with y
+				// so x1 = mx, z1 = mz, and m = y/sqrt(x^2 + z^2)
+				// and y = sqrt(x^2 + z^2)
+				// make y negative to reflect gravity
+				// and move x and z first then y
+				if(characterState != CharacterState.SLIPPING_NO_CONTROL){
+					characterState = CharacterState.SLIPPING_NO_CONTROL;
+					//Debug.Log(hit.normal);
+					// we have not executed a slip
+					float y1 = Mathf.Sqrt(ray.normal.x * ray.normal.x + ray.normal.z * ray.normal.z);
+					float m = ray.normal.y/y1;
+					float x1 = ray.normal.x * m;
+					float z1 = ray.normal.z * m;
+					// the new vector is ready
+					moveBack = new Vector3(x1, -y1, z1); // this is a unit vector (magnitude = 1)
+				}
+				else{
+					// we are waiting for update to execute our moveback vector, so do nothing
+				}
+			}
+			else{
+				// regular floor
+			}
+
+
+		}
+		else{
+			//Debug.Log("no floor found");
+			// we did collide with something but it is not a floor, might be stuck on it
+			RaycastHit ray2;
+			Vector3 direction = hit.point - transform.position;
+			if(Physics.Raycast(transform.position, direction, out ray2, direction.magnitude + forwardDistanceCheck)){
+				Debug.Log("wall found");
+				fallingMoveBack = new Vector3(-direction.x, 0, -direction.z) * moveBackValue;
+				Debug.Log(fallingMoveBack);
+			}
+		}
+		*/
 	}
 
 }

@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 4222727842429243566}
   - component: {fileID: 5170451396250217112}
   - component: {fileID: 1512553400777135713}
-  - component: {fileID: 6057384758415015380}
   - component: {fileID: 9214523542494711867}
   m_Layer: 0
   m_Name: wormhole_generator_v1
@@ -81,25 +80,6 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!95 &6057384758415015380
-Animator:
-  serializedVersion: 3
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 919153518843224765}
-  m_Enabled: 0
-  m_Avatar: {fileID: 9000000, guid: 634f624dec5e7b748898a4ecdf4ec7aa, type: 3}
-  m_Controller: {fileID: 0}
-  m_CullingMode: 0
-  m_UpdateMode: 0
-  m_ApplyRootMotion: 0
-  m_LinearVelocityBlending: 0
-  m_WarningMessage: 
-  m_HasTransformHierarchy: 1
-  m_AllowConstantClipSamplingOptimization: 1
-  m_KeepAnimatorControllerStateOnDisable: 0
 --- !u!64 &9214523542494711867
 MeshCollider:
   m_ObjectHideFlags: 0

@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 3ed7adea686484d46a238639b7e695fe
+guid: 58dce101886325c49b5107fd03012a52
 ModelImporter:
   serializedVersion: 26
   internalIDToNameTable:
@@ -10,23 +10,28 @@ ModelImporter:
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: dirt__wood_jpg
-    second: {fileID: 2100000, guid: 5015fc9b7a2e14e47837c175f49998d3, type: 2}
+      name: dirt
+    second: {fileID: 2100000, guid: fd46817b281371d4f8c16c40b823923c, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: grass_side__wood_jpg
-    second: {fileID: 2100000, guid: afebbcf6f4c431e41be213000458711f, type: 2}
+      name: grass
+    second: {fileID: 2100000, guid: fd846de22819236439b236257925a701, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: grass_top__wood_jpg
-    second: {fileID: 2100000, guid: 7eb879a4916bdaf4e8703c2991137d1b, type: 2}
+      name: gravel
+    second: {fileID: 2100000, guid: d21b84f7b75ae4c469ea0e518094d1bc, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: wood__wood_jpg
-    second: {fileID: 2100000, guid: dbbf484735e8c1643875dc344c5b20ec, type: 2}
+      name: rock_floor
+    second: {fileID: 2100000, guid: 000d994eb18618547b96eb41350a135c, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: rock_wall
+    second: {fileID: 2100000, guid: d6667f48f408b344b9457b53dca323f2, type: 2}
   materials:
     importMaterials: 1
     materialName: 0

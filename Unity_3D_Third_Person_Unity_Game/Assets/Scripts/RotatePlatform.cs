@@ -7,6 +7,8 @@ public class RotatePlatform : MonoBehaviour
 	public float worldRotationSpeed = 5.0f;
 	public Vector3 world = new Vector3(0, 0, 0);
 
+    // later check if the platform can rotate in world coords with player still on it (bowser flips platform in second battle)
+
 	// Start is called before the first frame update
 	void Start()
 	{

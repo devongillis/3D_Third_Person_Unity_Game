@@ -64,6 +64,50 @@ public class DebuggingColorTrianglesByNormalYShader : MonoBehaviour
 			Quaternion rotation = Quaternion.Euler(transform.eulerAngles.x, transform.eulerAngles.y, transform.eulerAngles.z);
 			Vector3 normal = rotation * mesh.normals[i];
 
+            //newColors[i] = new Color32(255, 165, 0, 255);
+            
+            if (normal.y <= -0.5f)
+            {
+                // ceiling
+                // orange
+                newColors[i] = new Color32(255, 165, 0, 255);
+            }
+            else if (normal.y >= -0.174f && normal.y < -0.09f)
+            {
+                // dark blue wall facing down
+                newColors[i] = new Color32(0, 0, 139, 255);
+            }
+            else  if (normal.y >= -0.09f && normal.y <= 0.09f)
+            {
+                // wall
+                // blue
+                newColors[i] = new Color32(0, 191, 255, 255);
+            }
+            else if (normal.y > 0.09f && normal.y <= 0.174f)
+            {
+                // light blue wall facing up
+                newColors[i] = new Color32(135, 206, 250, 255);
+            }
+            else if(normal.y >= 0.707f)
+            {
+                // regular floor
+                // light green
+                newColors[i] = new Color32(124, 252, 0, 255);
+            }
+            else if(normal.y < 0.707f && normal.y >= 0.5f)
+            {
+                // slippery floor
+                // dark green
+                newColors[i] = new Color32(0, 100, 0, 255);
+            }
+            else
+            {
+                // bad triangular face
+                // red
+                newColors[i] = new Color32(255, 0, 0, 255);
+            }
+
+            /*
 			if(normal.y < -0.09f){
 				newColors[i] = Color.red;
 			}
@@ -76,7 +120,9 @@ public class DebuggingColorTrianglesByNormalYShader : MonoBehaviour
 			else{
 				newColors[i] = Color.green;
 			}
+            */
 		}
+        
 		mesh.colors32 = newColors;
 	}
 }
