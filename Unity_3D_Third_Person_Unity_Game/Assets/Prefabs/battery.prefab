@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 6156230281784771112}
   - component: {fileID: 2897033291385796638}
   - component: {fileID: 8865578887125140711}
-  - component: {fileID: 1159085488192320631}
   m_Layer: 0
   m_Name: battery
   m_TagString: Untagged
@@ -79,19 +78,3 @@ MeshRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
---- !u!114 &1159085488192320631
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7148350646437949499}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 007d75cbe86682347991612a14db9886, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  worldRotationSpeed: 5
-  localRotationSpeed: 5
-  world: {x: 0, y: -0.4, z: 0}
-  local: {x: 0, y: 0, z: -0.4}

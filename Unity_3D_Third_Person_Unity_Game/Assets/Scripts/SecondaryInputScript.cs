@@ -14,7 +14,7 @@ public class SecondaryInputScript : MonoBehaviour
 	int ticker = 0;
 
 	//character_script_controller script;
-	characterControllerScript_withCharacterControllerAttribute script;
+	//characterControllerScript_withCharacterControllerAttribute script;
 
 	public ButtonClick button = ButtonClick.BUTTON_NOT_FIRST_PRESS;
     void Start()
@@ -22,7 +22,7 @@ public class SecondaryInputScript : MonoBehaviour
 		//GameObject player = GameObject.Find("character_astronaut");
 		//script = player.GetComponent<character_script_controller>();
 		GameObject player = GameObject.Find("character_astronaut");
-		script = player.GetComponent<characterControllerScript_withCharacterControllerAttribute>();
+		//script = player.GetComponent<characterControllerScript_withCharacterControllerAttribute>();
 
 		//script
     }
@@ -118,10 +118,10 @@ public class SecondaryInputScript : MonoBehaviour
 		}
 
 		if(button == ButtonClick.SECOND_PRESS){
-			script.running = true;
+			//script.running = true;
 		}
 		else{
-			script.running = false;
+			//script.running = false;
 		}
 	}
 
