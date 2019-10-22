@@ -9,13 +9,15 @@ public class NewCharacterControllerScript : MonoBehaviour
     public float distToGround;
     public bool isGrounded = true;
     public Vector3 slopeVector = new Vector3(0, 0, 0); // on each frame we get the normal of the ground, if no ground then (0, 0, 0)
-    public float forwardHeightTop = 1.0f;
-    public float forwardHeightMiddle = 1.0f;
-    public float forwardHeightBottom = 1.0f;
-    public float downwardThickness = 0.1f; // the difference between the ground and the position of the character
-    public float downwardHeight = 2.0f; // the height the ray cast starts from (up from position)
+    public float forwardHeightTop = 4f;
+    public float forwardHeightMiddle1 = 3.12f;
+    public float forwardHeightMiddle2 = 2.38f;
+    public float forwardHeightMiddle3 = 1.56f;
+    public float forwardHeightBottom = 0.75f;
+    public float downwardThickness = 0.0f; // the difference between the ground and the position of the character
+    public float downwardHeight = 3.0f; // the height the ray cast starts from (up from position)
     public float upwardHeight = 2.0f; // the height the ray cast starts from (up from position)
-    public float forwardThickness = 0.2f; // this need to be have the diameter of the total player
+    public float forwardThickness = 0.3f; // this need to be have the diameter of the total player
 
 
     // a wall is defined as any surface with normal.y between -0.174 and 0.174
@@ -46,38 +48,41 @@ public class NewCharacterControllerScript : MonoBehaviour
 
     public CharacterState characterState = CharacterState.STATIONARY;
 
-    public float walkSpeed = 0.1f;
-    public float runSpeed = 0.2f;
+    public float walkSpeed = 0.15f;
+    public float runSpeed = 0.3f;
 
     // swimming physics
-    public float swimmingCoastSpeed = 0.1f;
-    public float swimmingCoastGroundedSpeed = 0.15f;
+    public float swimmingCoastSpeed = 0.5f;
+    public float swimmingCoastGroundedSpeed = 0.07f;
     public Vector2 swimmingStrokeInitialSpeed = new Vector2(0.15f, 0.1f);
     public float swimmingGravityIncrement = -0.01f;
     public float swimmingMaxFallSpeed = -0.1f;
     public float swimmingJumpSpeed = 0.1f;
-    public float swimmingTurnSmoothTime = 3.0f;
+    public float swimmingTurnSmoothTime = 1.0f;
     public float swimmingSpeedSmoothTime = 3.0f;
     public float swimBodyHeight; // the top of the swimming medium in world quardinates
 
     // the current gravity value is contained in the universal vector, gravity increment is added to its y component
-    public float gravityIncrement = -0.0981f; // this is the amount each frame the gravity value changes
-    public float maxFallVelocity = -0.1f; // the maximum value to displace the character
+    public float gravityIncrement = -0.01f; // this is the amount each frame the gravity value changes
+    public float maxFallVelocity = -1.0f; // the maximum value to displace the character
 
     public float groundDistanceCheck = 0.1f;
 
-    public float turnSmoothTime = 0.0f;
-    float turnSmoothVelocity = 0.0f;
+    public float turnSmoothTime = 1.0f;
+    float turnSmoothVelocity = 1.0f;
 
-    public float speedSmoothTime = 0.1f;
+    public float JumpingSpeedSmoothTime = 0.1f; // also used for falling
+    public float runningSpeedSmoothTime = 0.5f;
     float speedSmoothVelocity;
+
+
     float currentSpeed;
 
 
 
-    public float initialJumpVelocity = 1.0f;
-    public float initialHighJumpVelocity = 2.0f;
-    public Vector2 initialLongJumpVelocity = new Vector2(1.0f, 1.0f); // length and height
+    public float initialJumpVelocity = 0.5f;
+    public float initialHighJumpVelocity = 1.0f;
+    public Vector2 initialLongJumpVelocity = new Vector2(1.0f, 0.5f); // length and height
 
 
 
@@ -202,70 +207,26 @@ public class NewCharacterControllerScript : MonoBehaviour
 
         Vector3 XZ = new Vector3(universalMovementVector.x, 0, universalMovementVector.z);
         Vector3 Y = new Vector3(0, universalMovementVector.y, 0);
-
+        isGrounded = false;
 
         // we are moving vertically but not horizontally thus we have no direction for wall collisions
         // must use the transform.forward, and do a vector in all four directions
         RaycastHit noDirection;
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
-            if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = noDirection.point + noDirection.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(noDirection);
         }
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
-            if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = noDirection.point + noDirection.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(noDirection);
         }
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), -transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
-            if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = noDirection.point + noDirection.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(noDirection);
         }
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), -transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
-            if (noDirection.normal.y >= wallLowerLimitNormalY && noDirection.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = noDirection.point + noDirection.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(noDirection);
         }
 
         // these three ray casts must be done at the varying heights of the character
@@ -277,42 +238,42 @@ public class NewCharacterControllerScript : MonoBehaviour
         // we want the player's thickness included in the raycast
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0), XZ, out hitForwardTop, XZ.magnitude + forwardThickness, layerMask))
         {
-            if (hitForwardTop.normal.y >= wallLowerLimitNormalY && hitForwardTop.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = hitForwardTop.point + hitForwardTop.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(hitForwardTop);
         }
 
 
 
-        RaycastHit hitForwardMiddle;
+        RaycastHit hitForwardMiddle1;
         // remember the distance is based off the universalMovementVector
         // we only want the x and z components of the universalMovementVector, x and z limits are identical
         // can use either for distance, and then set the temps based of which is smaller the current temps or the
         // new calculated temps
         // we want the player's thickness included in the raycast
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle, 0), XZ, out hitForwardMiddle, XZ.magnitude + forwardThickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle1, 0), XZ, out hitForwardMiddle1, XZ.magnitude + forwardThickness, layerMask))
         {
-            if (hitForwardMiddle.normal.y >= wallLowerLimitNormalY && hitForwardMiddle.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = hitForwardMiddle.point + hitForwardMiddle.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(hitForwardMiddle1);
+        }
+
+        RaycastHit hitForwardMiddle2;
+        // remember the distance is based off the universalMovementVector
+        // we only want the x and z components of the universalMovementVector, x and z limits are identical
+        // can use either for distance, and then set the temps based of which is smaller the current temps or the
+        // new calculated temps
+        // we want the player's thickness included in the raycast
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle2, 0), XZ, out hitForwardMiddle2, XZ.magnitude + forwardThickness, layerMask))
+        {
+            xzModified = WallCollsion(hitForwardMiddle2);
+        }
+
+        RaycastHit hitForwardMiddle3;
+        // remember the distance is based off the universalMovementVector
+        // we only want the x and z components of the universalMovementVector, x and z limits are identical
+        // can use either for distance, and then set the temps based of which is smaller the current temps or the
+        // new calculated temps
+        // we want the player's thickness included in the raycast
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle3, 0), XZ, out hitForwardMiddle3, XZ.magnitude + forwardThickness, layerMask))
+        {
+            xzModified = WallCollsion(hitForwardMiddle3);
         }
 
 
@@ -324,18 +285,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         // we want the player's thickness included in the raycast
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), XZ, out hitForwardBottom, XZ.magnitude + forwardThickness, layerMask))
         {
-            if (hitForwardBottom.normal.y >= wallLowerLimitNormalY && hitForwardBottom.normal.y <= wallUpperLimitNormalY)
-            {
-                //Debug.Log("wall is hit");
-                Vector3 translator = hitForwardBottom.point + hitForwardBottom.normal * forwardThickness;
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                //universalMovementVector = Vector3.zero;
-            }
-            else
-            {
-                // a surface was found but it does not meet the definition of a wall
-            }
+            xzModified = WallCollsion(hitForwardBottom);
         }
 
 
@@ -442,8 +392,33 @@ public class NewCharacterControllerScript : MonoBehaviour
         MoveCharacter(universalMovementVector + platformRotationVector, xzModified, yModified);
         platformRotationVector = Vector3.zero;
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 10, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle, 0), transform.forward * 10, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle1, 0), transform.forward * 10, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle2, 0), transform.forward * 10, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle3, 0), transform.forward * 10, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward * 10, Color.red);
+    }
+
+    bool WallCollsion(RaycastHit hit)
+    {
+        bool xzModified = false;
+        if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
+        {
+            //Debug.Log("wall is hit");
+            Vector3 translator = hit.point + hit.normal * forwardThickness;
+            transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+            xzModified = true;
+            if (!isGrounded && currentSpeed > walkSpeed)
+            {
+                universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
+            }
+            currentSpeed = 0.0f;
+            //universalMovementVector = Vector3.zero;
+        }
+        else
+        {
+            // a surface was found but it does not meet the definition of a wall
+        }
+        return xzModified;
     }
 
 
@@ -548,8 +523,8 @@ public class NewCharacterControllerScript : MonoBehaviour
 
             // determine the speed at which to move the player
             float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
-            universalMovementVector = transform.forward * targetSpeed;
+            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, runningSpeedSmoothTime);
+            universalMovementVector = transform.forward * currentSpeed;
 
             if (jump > 0)
             {
@@ -635,7 +610,7 @@ public class NewCharacterControllerScript : MonoBehaviour
             transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
         }
         float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
 
         universalMovementVector.x = transform.forward.x * currentSpeed;
         universalMovementVector.z = transform.forward.z * currentSpeed;
@@ -665,7 +640,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         }
 
         float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
 
         universalMovementVector.x = transform.forward.x * currentSpeed;
         universalMovementVector.z = transform.forward.z * currentSpeed;
@@ -702,7 +677,7 @@ public class NewCharacterControllerScript : MonoBehaviour
             }
 
             float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, speedSmoothTime);
+            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
 
             universalMovementVector.x = transform.forward.x * currentSpeed;
             universalMovementVector.z = transform.forward.z * currentSpeed;
@@ -886,6 +861,7 @@ public class NewCharacterControllerScript : MonoBehaviour
     {
         universalMovementVector = transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0);
         characterState = CharacterState.JUMPING_LONG;
+        currentSpeed = initialLongJumpVelocity.x;
     }
 
     void HighJump()
@@ -936,7 +912,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         if (characterState != CharacterState.SWIMMING || characterState != CharacterState.SWIMMING_STROKE_FORWARD || characterState != CharacterState.SWIMMING_STROKE_UP)
         {
             swimBodyHeight = height;
-            Debug.Log("player is swimming");
+            //Debug.Log("player is swimming");
             characterState = CharacterState.SWIMMING;
         }
     }
@@ -945,7 +921,7 @@ public class NewCharacterControllerScript : MonoBehaviour
     {
         if (characterState == CharacterState.SWIMMING || characterState == CharacterState.SWIMMING_STROKE_FORWARD || characterState == CharacterState.SWIMMING_STROKE_UP)
         {
-            Debug.Log("player is not swimming");
+            //Debug.Log("player is not swimming");
             characterState = CharacterState.RUNNING;
         }
     }

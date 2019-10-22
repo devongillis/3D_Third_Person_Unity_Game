@@ -15,7 +15,7 @@ public class waterOnCollisionEnter : MonoBehaviour
 
     void OnTriggerStay(Collider other)
     {
-        Debug.Log("collision");
+        //Debug.Log("collision");
         if (other.tag == "Player")
         {
             if (other.transform.position.y + 2.5f < transform.position.y)

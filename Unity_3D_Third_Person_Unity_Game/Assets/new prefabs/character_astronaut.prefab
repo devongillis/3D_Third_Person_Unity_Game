@@ -504,7 +504,9 @@ MonoBehaviour:
   isGrounded: 1
   slopeVector: {x: 0, y: 0, z: 0}
   forwardHeightTop: 4
-  forwardHeightMiddle: 2.375
+  forwardHeightMiddle1: 3.12
+  forwardHeightMiddle2: 2.38
+  forwardHeightMiddle3: 1.56
   forwardHeightBottom: 0.75
   downwardThickness: 0
   downwardHeight: 3
@@ -528,8 +530,8 @@ MonoBehaviour:
   characterState: 0
   walkSpeed: 0.15
   runSpeed: 0.3
-  swimmingCoastSpeed: 0.1
-  swimmingCoastGroundedSpeed: 0.15
+  swimmingCoastSpeed: 0.05
+  swimmingCoastGroundedSpeed: 0.07
   swimmingStrokeInitialSpeed: {x: 0.15, y: 0.1}
   swimmingGravityIncrement: -0.01
   swimmingMaxFallSpeed: -0.1
@@ -541,10 +543,11 @@ MonoBehaviour:
   maxFallVelocity: -1
   groundDistanceCheck: 0.1
   turnSmoothTime: 1
-  speedSmoothTime: 1
+  JumpingSpeedSmoothTime: 0.1
+  runningSpeedSmoothTime: 0.5
   initialJumpVelocity: 0.5
   initialHighJumpVelocity: 1
-  initialLongJumpVelocity: {x: 1, y: 1}
+  initialLongJumpVelocity: {x: 1, y: 0.5}
   running: 0
   universalMovementVector: {x: 0, y: 0, z: 0}
   platformRotationVector: {x: 0, y: 0, z: 0}
