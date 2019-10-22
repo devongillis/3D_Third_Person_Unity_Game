@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class NewCharacterControllerScript : MonoBehaviour
+public class characterControllerTest : MonoBehaviour
 {
 
     Transform cameraT;
@@ -16,7 +16,7 @@ public class NewCharacterControllerScript : MonoBehaviour
     public float downwardHeight = 2.0f; // the height the ray cast starts from (up from position)
     public float upwardHeight = 2.0f; // the height the ray cast starts from (up from position)
     public float forwardThickness = 0.2f; // this need to be have the diameter of the total player
-
+    public float cylinderThickness = 1.05f;
 
     // a wall is defined as any surface with normal.y between -0.174 and 0.174
     public float wallUpperLimitNormalY = 0.174f; // <=
@@ -48,17 +48,6 @@ public class NewCharacterControllerScript : MonoBehaviour
 
     public float walkSpeed = 0.1f;
     public float runSpeed = 0.2f;
-
-    // swimming physics
-    public float swimmingCoastSpeed = 0.1f;
-    public float swimmingCoastGroundedSpeed = 0.15f;
-    public Vector2 swimmingStrokeInitialSpeed = new Vector2(0.15f, 0.1f);
-    public float swimmingGravityIncrement = -0.01f;
-    public float swimmingMaxFallSpeed = -0.1f;
-    public float swimmingJumpSpeed = 0.1f;
-    public float swimmingTurnSmoothTime = 3.0f;
-    public float swimmingSpeedSmoothTime = 3.0f;
-    public float swimBodyHeight; // the top of the swimming medium in world quardinates
 
     // the current gravity value is contained in the universal vector, gravity increment is added to its y component
     public float gravityIncrement = -0.0981f; // this is the amount each frame the gravity value changes
@@ -104,7 +93,6 @@ public class NewCharacterControllerScript : MonoBehaviour
     public bool InputAccepted = true;
     public int groundPoundTimer = 0;
     public int groundPoundTimeLimit = 60; // frames
-
 
     // Start is called before the first frame update
     void Start()
@@ -184,10 +172,6 @@ public class NewCharacterControllerScript : MonoBehaviour
         {
             GroundPoundState();
         }
-        else if(characterState == CharacterState.SWIMMING)
-        {
-            SwimmingState();
-        }
         // no matter what state we are in we must check the collisions with the ray cast
         // thus we do the collision testing after the state function
         // each raycast will set values of their own (downward raycast will set isgrounded if it detects a ground)
@@ -204,8 +188,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         Vector3 Y = new Vector3(0, universalMovementVector.y, 0);
 
 
-        // we are moving vertically but not horizontally thus we have no direction for wall collisions
-        // must use the transform.forward, and do a vector in all four directions
+        /*
         RaycastHit noDirection;
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
         {
@@ -337,7 +320,7 @@ public class NewCharacterControllerScript : MonoBehaviour
                 // a surface was found but it does not meet the definition of a wall
             }
         }
-
+        */
 
         RaycastHit hitDownward;
         // remember the distance is based off the universalMovementVector
@@ -346,7 +329,6 @@ public class NewCharacterControllerScript : MonoBehaviour
 
         // a tiny 0.01f offset to ensure the raycast doesn't just miss the floor on next frame after moving character
         // to the floor
-        isGrounded = false;
         if (Y.y <= 0)
         {
             // we are not moving up
@@ -595,35 +577,27 @@ public class NewCharacterControllerScript : MonoBehaviour
                 {
                     animMoveSpeed -= animDeltaSpeed;
                 }
-                anim.SetFloat("speed", animWalkSpeed); // double check this i think it should be animmovespeed
+                anim.SetFloat("speed", animWalkSpeed);
             }
         }
     }
 
     void LongJumpingState()
     {
-        //Debug.Log("hello");
         // also since in long jump we dont want to change the character's rotation
         universalMovementVector.y += gravityIncrement;
         universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 
         if (universalMovementVector.y <= 0.0f)
         {
-            //characterState = CharacterState.FALLING;
+            characterState = CharacterState.FALLING;
         }
 
-        if (isGrounded)
-        {
-            //Debug.Log("hello");
-            characterState = CharacterState.RUNNING;
-        }
-        /*
         if (groundPound > 0)
         {
             characterState = CharacterState.GROUND_POUND;
             universalMovementVector.y = 0;
         }
-        */
     }
 
     void HighJumpingState()
@@ -718,25 +692,7 @@ public class NewCharacterControllerScript : MonoBehaviour
             }
         }
     }
-    /*
-    void LongJumpFallingState()
-    {
-        // also since in long jump we dont want to change the character's rotation
-        universalMovementVector.y += gravityIncrement;
-        universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 
-        if (universalMovementVector.y <= 0.0f)
-        {
-            characterState = CharacterState.FALLING;
-        }
-
-        if (groundPound > 0)
-        {
-            characterState = CharacterState.GROUND_POUND;
-            universalMovementVector.y = 0;
-        }
-    }
-    */
     void SlippingState()
     {
         // slipping state will put the character back and down the slope by the moveback vector
@@ -783,107 +739,20 @@ public class NewCharacterControllerScript : MonoBehaviour
             groundPoundTimer++;
         }
     }
-
-    void SwimmingState()
-    {
-        // the swimming state works with reduced gravity and speed we do not need to be grounded to move
-        // and jump is now a stroke forward, works like a weak long jump
-        // we should be able to do the stroke even if not grounded, but being grounded lets us walk
-        // which is slightly faster than coasting
-        // we also need a stroke timer when we stroke we wait until a time limit (with animations) and
-        // then we can stroke again
-        /*
-        public float swimmingCoastSpeed = 0.1f; just press forward
-        public float swimmingCoastGroundedSpeed = 0.15f;
-
-        public Vector2 swimmingStrokeInitialSpeed = new Vector2(0.15f, 0.1f); forward and E
-        public float swimmingGravityIncrement = -0.01f;
-        public float swimmingMaxFallSpeed = -0.1f;
-        
-        public float swimmingJumpSpeed = 0.1f; jump
-
-        public float swimmingTurnSmoothTime = 3.0f;
-        public float swimmingSpeedSmoothTime = 3.0f;
-        */
-
-        if (input != Vector2.zero)
-        {
-            // all this is to rotate the character in the desired running direction
-            float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-            transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, swimmingTurnSmoothTime);
-        }
-
-        // determine the speed at which to move the player
-        float targetSpeed = ((isGrounded) ? swimmingCoastGroundedSpeed : swimmingCoastSpeed) * input.magnitude;
-
-        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime);
-        universalMovementVector = transform.forward * targetSpeed;
-        Debug.Log(isGrounded);
-        if (!isGrounded)
-        {
-            universalMovementVector.y += swimmingGravityIncrement;
-            universalMovementVector.y = Mathf.Max(universalMovementVector.y, swimmingMaxFallSpeed);
-        }
-        
-        if(!isGrounded && transform.position.y + 2.5f > swimBodyHeight)
-        {
-            // we are not grounded and too high above the surface
-            universalMovementVector.y = -(transform.position.y + 2.5f - swimBodyHeight);
-        }
-
-        if (jump > 0)
-        {
-            // player wants to scroke upwards
-            SwimmingStrokeUpward();
-        }
-        else if (Input.GetKey(KeyCode.E))
-        {
-            // player wants to stroke forward
-            SwimmingStrokeForward();
-        }
-        
-        
-
-        
-
-        if (input.y > 0)
-        {
-            if (animMoveSpeed < animWalkSpeed)
-            {
-                animMoveSpeed += animDeltaSpeed;
-            }
-            else
-            {
-                animMoveSpeed -= animDeltaSpeed;
-            }
-
-        }
-        else
-        {
-            if (animMoveSpeed <= animIdleSpeed)
-            {
-                animMoveSpeed = animIdleSpeed;
-            }
-            else
-            {
-                animMoveSpeed -= animDeltaSpeed;
-            }
-        }
-        anim.SetFloat("speed", animMoveSpeed);
-    }
-    
-    void SwimmingStrokeUpward()
-    {
-        // this just sets up the initial speed upward its not a state
-    }
-
-    void SwimmingStrokeForward()
-    {
-        // this just sets up the initial speed forward its not a state
-    }
-
+    /*
+	public bool IsGroundPounding(){
+		Debug.Log(characterState);
+		if(characterState == CharacterState.GROUND_POUND){
+			return true;
+		}
+		else{
+			return false;
+		}
+	}
+	*/
     void LongJump()
     {
+
         universalMovementVector = transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0);
         characterState = CharacterState.JUMPING_LONG;
     }
@@ -917,10 +786,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         FALLING, // upon ground detection will transition to stationary
         FALLING_NO_CONTROL, // when fall starts without a jump (i.e. bumped off edge)
         SLIPPING_NO_CONTROL,
-        GROUND_POUND,
-        SWIMMING,
-        SWIMMING_STROKE_UP,
-        SWIMMING_STROKE_FORWARD
+        GROUND_POUND
         // a function is called to set this value and must clean up a few values before forcing a no input senario
 
     }
@@ -931,24 +797,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         // must clean up a few things before setting the state to no inputs
     }
 
-    public void SwitchIntoSwimState(float height)
-    {
-        if (characterState != CharacterState.SWIMMING || characterState != CharacterState.SWIMMING_STROKE_FORWARD || characterState != CharacterState.SWIMMING_STROKE_UP)
-        {
-            swimBodyHeight = height;
-            Debug.Log("player is swimming");
-            characterState = CharacterState.SWIMMING;
-        }
-    }
 
-    public void SwitchOutOfSwimState()
-    {
-        if (characterState == CharacterState.SWIMMING || characterState == CharacterState.SWIMMING_STROKE_FORWARD || characterState == CharacterState.SWIMMING_STROKE_UP)
-        {
-            Debug.Log("player is not swimming");
-            characterState = CharacterState.RUNNING;
-        }
-    }
     /*
 	Player movement needs to be broken down into states such that one state can transition
 	to another through change in terrain/input. So far states are stationary, running, jumping,
@@ -967,4 +816,41 @@ public class NewCharacterControllerScript : MonoBehaviour
 	long jump will begin using regular gravity when over the initial height jump of the long
 	jump duration.
 	 */
+
+    void OnCollisionStay(Collision collision)
+    {
+        Debug.Log("collision");
+        if (collision.contacts[0].normal.y <= 0.174f && collision.contacts[0].normal.y >= -0.174f)
+        {
+            Debug.Log("wall " + collision.contacts[0].normal + " " + transform.position.x + " " + collision.contacts[0].point.x);
+            transform.position = new Vector3(collision.contacts[0].point.x + collision.contacts[0].normal.x * cylinderThickness, transform.position.y, collision.contacts[0].point.z + collision.contacts[0].normal.z * cylinderThickness);
+        }
+    }
 }
+/*
+{
+
+    public float thickness = 1.1f;
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        transform.Translate(transform.forward * 0.01f);
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        Debug.Log("collision");
+        if(collision.contacts[0].normal.y < 0.1f && collision.contacts[0].normal.y > -0.1f)
+        {
+            Debug.Log("wall " + collision.contacts[0].normal + " " + transform.position.x + " " + collision.contacts[0].point.x);
+            transform.position = new Vector3(collision.contacts[0].point.x + collision.contacts[0].normal.x * thickness, transform.position.y, collision.contacts[0].point.z + collision.contacts[0].normal.z * thickness);
+        }
+    }
+}
+*/
