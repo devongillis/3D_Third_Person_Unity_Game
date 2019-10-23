@@ -11,9 +11,8 @@ public class cameraAudioManager : MonoBehaviour
 
     public AudioSource[] background;
     public int sourcePlaying = 0; // points to which source is dominate for background
-    public float fadeTime = 2.0f; // time fo volume to reach max, note the difference between float and log scale for db
-    public float volumeIncrement = 0f;
-    // so we save volume of 0.5f is considered max and then swap it to 1
+    public float fadeTime = 2.0f; 
+    float timeGoneBy = 0.0f;
     public bool transition = false;
     public AudioClip defaultSource;
 
@@ -48,16 +47,20 @@ public class cameraAudioManager : MonoBehaviour
 
     public void switchBackgroundMusic(AudioClip clip)
     {
-        background[1 - sourcePlaying].Stop();
-        background[1 - sourcePlaying].clip = clip;
-        background[1 - sourcePlaying].volume = 0.0f;
-        background[sourcePlaying].volume = 0.5f;
-        background[1 - sourcePlaying].Play();
-        sourcePlaying = 1 - sourcePlaying;
-        // now transition the other source
-        transition = true;
+        if (background[sourcePlaying].clip != clip)
+        {
+            // new clip request
+            background[1 - sourcePlaying].Stop();
+            background[1 - sourcePlaying].clip = clip;
+            background[1 - sourcePlaying].volume = 0.0f;
+            background[sourcePlaying].volume = 0.5f;
+            background[1 - sourcePlaying].Play();
+            sourcePlaying = 1 - sourcePlaying;
+            // now transition the other source
+            transition = true;
+        }
     }
-
+    /*
     void TransitionBackground()
     {
         //Debug.Log("transitioning" + background[sourcePlaying].volume);
@@ -71,6 +74,23 @@ public class cameraAudioManager : MonoBehaviour
             background[1 - sourcePlaying].volume = 0.0f;
             // transition complete
             transition = false;
+        }
+    }
+    */
+    void TransitionBackground()
+    {
+        // if fade time = 6 seconds then 6/3 = 2 thus every 2 seconds the volume is 1/2 (1 - 0.1), and the
+        // volume is gone after becoming half 3 times
+        timeGoneBy += Time.deltaTime;
+        background[1- sourcePlaying].volume = 1 / Mathf.Pow(10, timeGoneBy/(fadeTime/3));
+        background[sourcePlaying].volume = 0.001f / background[1 - sourcePlaying].volume;
+        
+        if (background[sourcePlaying].volume >= 0.99f)
+        {
+            background[1 - sourcePlaying].volume = 0.0f;
+            background[sourcePlaying].volume = 1.0f;
+            transition = false;
+            timeGoneBy = 0.0f;
         }
     }
 }

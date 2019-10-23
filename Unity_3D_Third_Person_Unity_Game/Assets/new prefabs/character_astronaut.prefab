@@ -502,7 +502,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   distToGround: 0
   isGrounded: 1
-  slopeVector: {x: 0, y: 0, z: 0}
   forwardHeightTop: 4
   forwardHeightMiddle1: 3.12
   forwardHeightMiddle2: 2.38
@@ -545,9 +544,9 @@ MonoBehaviour:
   turnSmoothTime: 1
   JumpingSpeedSmoothTime: 0.1
   runningSpeedSmoothTime: 0.5
-  initialJumpVelocity: 0.5
-  initialHighJumpVelocity: 1
-  initialLongJumpVelocity: {x: 1, y: 0.5}
+  initialJumpVelocity: 0.35
+  initialHighJumpVelocity: 0.45
+  initialLongJumpVelocity: {x: 0.6, y: 0.25}
   running: 0
   universalMovementVector: {x: 0, y: 0, z: 0}
   platformRotationVector: {x: 0, y: 0, z: 0}

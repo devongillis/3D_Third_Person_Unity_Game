@@ -6,11 +6,21 @@ public class waterOnCollisionEnter : MonoBehaviour
 {
     public GameObject player;
     NewCharacterControllerScript script;
+    public AudioClip OnEnterWater;
+    public GameObject camera;
 
     // Start is called before the first frame update
     void Start()
     {
         script = player.GetComponent<NewCharacterControllerScript>();
+    }
+
+    void OnTriggerEnter(Collider other)
+    {
+        if(other.tag == "Player")
+        {
+            camera.GetComponent<cameraAudioManager>().switchBackgroundMusic(OnEnterWater);
+        }
     }
 
     void OnTriggerStay(Collider other)

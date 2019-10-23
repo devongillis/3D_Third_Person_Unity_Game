@@ -6,6 +6,7 @@ TagManager:
   tags:
   - rotatingPlatform
   - switch
+  - movingPlatform
   layers:
   - Default
   - TransparentFX

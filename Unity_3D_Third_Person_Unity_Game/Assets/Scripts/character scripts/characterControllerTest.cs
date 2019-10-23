@@ -348,7 +348,7 @@ public class characterControllerTest : MonoBehaviour
                     slopeVector = hitDownward.normal; // this is saved for truncating the player down to the floor
                     if (hitDownward.transform.tag == "rotatingPlatform")
                     {
-                        platformRotationVector = hitDownward.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
+                        //platformRotationVector = hitDownward.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
                     }
                     else if (hitDownward.transform.tag == "switch" && characterState == CharacterState.GROUND_POUND)
                     {
@@ -365,7 +365,7 @@ public class characterControllerTest : MonoBehaviour
                     slopeVector = hitDownward.normal; // this is saved for truncating the player down to the floor
                     if (hitDownward.transform.tag == "rotatingPlatform")
                     {
-                        platformRotationVector = hitDownward.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
+                        //platformRotationVector = hitDownward.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
                     }
                     else if (hitDownward.transform.tag == "switch" && characterState == CharacterState.GROUND_POUND)
                     {
@@ -414,7 +414,7 @@ public class characterControllerTest : MonoBehaviour
                 isGrounded = true;
                 if (truncate.transform.tag == "rotatingPlatform")
                 {
-                    platformRotationVector = truncate.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
+                    //platformRotationVector = truncate.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
                 }
             }
         }

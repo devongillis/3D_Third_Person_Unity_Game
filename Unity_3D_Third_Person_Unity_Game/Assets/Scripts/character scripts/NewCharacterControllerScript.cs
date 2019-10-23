@@ -8,7 +8,6 @@ public class NewCharacterControllerScript : MonoBehaviour
     Transform cameraT;
     public float distToGround;
     public bool isGrounded = true;
-    public Vector3 slopeVector = new Vector3(0, 0, 0); // on each frame we get the normal of the ground, if no ground then (0, 0, 0)
     public float forwardHeightTop = 4f;
     public float forwardHeightMiddle1 = 3.12f;
     public float forwardHeightMiddle2 = 2.38f;
@@ -193,6 +192,8 @@ public class NewCharacterControllerScript : MonoBehaviour
         {
             SwimmingState();
         }
+
+
         // no matter what state we are in we must check the collisions with the ray cast
         // thus we do the collision testing after the state function
         // each raycast will set values of their own (downward raycast will set isgrounded if it detects a ground)
@@ -200,7 +201,6 @@ public class NewCharacterControllerScript : MonoBehaviour
         // the downward raycast must check for ground and a rotating body, if rotating body is found then
         // add it to the universalTranslationVector
         // also DO NOT USE DELTA TIME, only use motion as frame by frame Application.targetFrameRate = 30
-
 
         bool xzModified = false;
         bool yModified = false;
@@ -229,73 +229,41 @@ public class NewCharacterControllerScript : MonoBehaviour
             xzModified = WallCollsion(noDirection);
         }
 
-        // these three ray casts must be done at the varying heights of the character
-        RaycastHit hitForwardTop;
         // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
         // we want the player's thickness included in the raycast
+        RaycastHit hitForwardTop;
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0), XZ, out hitForwardTop, XZ.magnitude + forwardThickness, layerMask))
         {
             xzModified = WallCollsion(hitForwardTop);
         }
 
-
-
         RaycastHit hitForwardMiddle1;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
-        // we want the player's thickness included in the raycast
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle1, 0), XZ, out hitForwardMiddle1, XZ.magnitude + forwardThickness, layerMask))
         {
             xzModified = WallCollsion(hitForwardMiddle1);
         }
 
         RaycastHit hitForwardMiddle2;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
-        // we want the player's thickness included in the raycast
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle2, 0), XZ, out hitForwardMiddle2, XZ.magnitude + forwardThickness, layerMask))
         {
             xzModified = WallCollsion(hitForwardMiddle2);
         }
 
         RaycastHit hitForwardMiddle3;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
-        // we want the player's thickness included in the raycast
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle3, 0), XZ, out hitForwardMiddle3, XZ.magnitude + forwardThickness, layerMask))
         {
             xzModified = WallCollsion(hitForwardMiddle3);
         }
 
-
         RaycastHit hitForwardBottom;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // can use either for distance, and then set the temps based of which is smaller the current temps or the
-        // new calculated temps
-        // we want the player's thickness included in the raycast
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), XZ, out hitForwardBottom, XZ.magnitude + forwardThickness, layerMask))
         {
             xzModified = WallCollsion(hitForwardBottom);
         }
 
-
-        RaycastHit hitDownward;
-        // remember the distance is based off the universalMovementVector
-        // we only want the x and z components of the universalMovementVector, x and z limits are identical
-        // we want the player's thickness included in the raycast
-
         // a tiny 0.01f offset to ensure the raycast doesn't just miss the floor on next frame after moving character
         // to the floor
+        RaycastHit hitDownward;
         isGrounded = false;
         if (Y.y <= 0)
         {
@@ -304,89 +272,35 @@ public class NewCharacterControllerScript : MonoBehaviour
             //slopeVector = Vector3.zero; // reset the slope vector to zero each frame
             if (Physics.Raycast(transform.position + new Vector3(0, downwardHeight, 0), -transform.up, out hitDownward, trans, layerMask))
             {
-                // we found something but the normal.y might be wrong
-                if (hitDownward.normal.y >= 0.5f && hitDownward.normal.y < slipperyFloorUpperLimitNormalY)
-                {
-                    // a slippery floor is detected
-                    //Debug.Log("slippery floor is hit");
-                    float translator = hitDownward.point.y + downwardThickness;
-                    transform.position = new Vector3(transform.position.x, translator, transform.position.z);
-                    yModified = true;
-                    isGrounded = true;
-                    slopeVector = hitDownward.normal; // this is saved for truncating the player down to the floor
-                    if (hitDownward.transform.tag == "rotatingPlatform")
-                    {
-                        platformRotationVector = hitDownward.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
-                    }
-                    else if (hitDownward.transform.tag == "switch" && characterState == CharacterState.GROUND_POUND)
-                    {
-                        hitDownward.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
-                    }
-                }
-                else if (hitDownward.normal.y >= slipperyFloorUpperLimitNormalY)
-                {
-                    // a regular floor is detected
-                    float translator = hitDownward.point.y + downwardThickness;
-                    transform.position = new Vector3(transform.position.x, translator, transform.position.z);
-                    yModified = true;
-                    isGrounded = true;
-                    slopeVector = hitDownward.normal; // this is saved for truncating the player down to the floor
-                    if (hitDownward.transform.tag == "rotatingPlatform")
-                    {
-                        platformRotationVector = hitDownward.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
-                    }
-                    else if (hitDownward.transform.tag == "switch" && characterState == CharacterState.GROUND_POUND)
-                    {
-                        hitDownward.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
-                    }
-                }
-                else
-                {
-                    // a surface was found but it does not meet the definition of a regular floor or a slippery floor
-                    isGrounded = false;
-                }
+                FloorCollision(hitDownward);
             }
             else
             {
-                //Debug.Log("not found");
                 isGrounded = false;
             }
-        }
-        /*
-        On each frame we save the normal of the ground we are standing on, if no ground found then set
-        x = 0, z = 0, and y = 0 (zero vector) and when using the normal we first check if y > 0 if so
-        then it’s a valid normal to use. Then we take the dot product of the normal with our normalized
-        movement vector (x, 0, z) and if the dot product is > 0 then we are moving away from a slope
-        thus we need to check if the ground below is within range to drop to (running down a slope).
-        We check for the ground within a range and if found we then truncate downward to that spot. We
-        need to do this slope check and truncate after the initial player translation from the raycasts,
-        only then we might be in the air and thus need to check. The amount we check down for is maximum
-        velocity/tan(90 – slope limit angle)
 
-        Maximum velocity is the running speed
-        */
+        }
+        
         // now we test for the truncated ground movement
         // just check if we are running or stationary, if so then test the truncate
-
+        // we need this as it starts from a different height
         if (characterState == CharacterState.STATIONARY || characterState == CharacterState.RUNNING)
         {
             // check for the ground
             RaycastHit truncate;
             if (Physics.Raycast(transform.position + new Vector3(0, 0.01f, 0), -transform.up, out truncate, slopeDownwardCheckDistance + 0.01f, layerMask))
             {
-                // we have found a floor below we must truncate to it
-                //Debug.Log("floor is hit and now truncating to it");
-                float translator = truncate.point.y + downwardThickness;
-                transform.position = new Vector3(transform.position.x, translator, transform.position.z);
-                yModified = true;
-                isGrounded = true;
-                if (truncate.transform.tag == "rotatingPlatform")
-                {
-                    platformRotationVector = truncate.collider.gameObject.GetComponent<RotatePlatform>().TranslateCharacter(transform.position);
-                }
+                FloorCollision(truncate);
+            }
+            else
+            {
+                isGrounded = false;
             }
         }
-
+        if (!isGrounded)
+        {
+            transform.parent = null;
+        }
 
         // only if not modified will this function move the player in that coordinate
         MoveCharacter(universalMovementVector + platformRotationVector, xzModified, yModified);
@@ -403,7 +317,6 @@ public class NewCharacterControllerScript : MonoBehaviour
         bool xzModified = false;
         if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
         {
-            //Debug.Log("wall is hit");
             Vector3 translator = hit.point + hit.normal * forwardThickness;
             transform.position = new Vector3(translator.x, transform.position.y, translator.z);
             xzModified = true;
@@ -412,13 +325,52 @@ public class NewCharacterControllerScript : MonoBehaviour
                 universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
             }
             currentSpeed = 0.0f;
-            //universalMovementVector = Vector3.zero;
         }
         else
         {
             // a surface was found but it does not meet the definition of a wall
         }
         return xzModified;
+    }
+
+    bool FloorCollision(RaycastHit hit)
+    {
+        bool yModified = false;
+        if(hit.normal.y >= 0.5f)
+        {
+            // we have found a floor below we must truncate to it
+            float translator = hit.point.y + downwardThickness;
+            transform.position = new Vector3(transform.position.x, translator, transform.position.z);
+            yModified = true;
+            isGrounded = true;
+            if (hit.transform.tag == "rotatingPlatform")
+            {
+                transform.parent = hit.transform;
+            }
+            else if (hit.transform.tag == "switch" && characterState == CharacterState.GROUND_POUND)
+            {
+                hit.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
+            }
+            else if(hit.transform.tag == "movingPlatform")
+            {
+                transform.parent = hit.transform;
+            }
+            
+
+            if (hit.normal.y >= 0.5f && hit.normal.y < slipperyFloorUpperLimitNormalY)
+            {
+                // slippery slope
+            }
+            else if (hit.normal.y >= slipperyFloorUpperLimitNormalY)
+            {
+                // regular floor
+            }
+        }
+        else
+        {
+            isGrounded = false;
+        }
+        return yModified;
     }
 
 
@@ -577,33 +529,19 @@ public class NewCharacterControllerScript : MonoBehaviour
 
     void LongJumpingState()
     {
-        //Debug.Log("hello");
+        // we dont enter falling state with long jump, because falling state lets us change the projectory
         // also since in long jump we dont want to change the character's rotation
         universalMovementVector.y += gravityIncrement;
         universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
 
-        if (universalMovementVector.y <= 0.0f)
-        {
-            //characterState = CharacterState.FALLING;
-        }
-
         if (isGrounded)
         {
-            //Debug.Log("hello");
             characterState = CharacterState.RUNNING;
         }
-        /*
-        if (groundPound > 0)
-        {
-            characterState = CharacterState.GROUND_POUND;
-            universalMovementVector.y = 0;
-        }
-        */
     }
 
     void HighJumpingState()
     {
-        Debug.Log("input " + currentSpeed + " " + input.magnitude);
         if (input.magnitude > 0)
         {
             float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
@@ -665,7 +603,6 @@ public class NewCharacterControllerScript : MonoBehaviour
     {
         if (isGrounded)
         {
-            //Debug.Log("grounded");
             characterState = CharacterState.RUNNING; // see if stationary is more appropriate
         }
         else
@@ -693,25 +630,7 @@ public class NewCharacterControllerScript : MonoBehaviour
             }
         }
     }
-    /*
-    void LongJumpFallingState()
-    {
-        // also since in long jump we dont want to change the character's rotation
-        universalMovementVector.y += gravityIncrement;
-        universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-
-        if (universalMovementVector.y <= 0.0f)
-        {
-            characterState = CharacterState.FALLING;
-        }
-
-        if (groundPound > 0)
-        {
-            characterState = CharacterState.GROUND_POUND;
-            universalMovementVector.y = 0;
-        }
-    }
-    */
+    
     void SlippingState()
     {
         // slipping state will put the character back and down the slope by the moveback vector
@@ -793,7 +712,7 @@ public class NewCharacterControllerScript : MonoBehaviour
 
         currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime);
         universalMovementVector = transform.forward * targetSpeed;
-        Debug.Log(isGrounded);
+        //Debug.Log(isGrounded);
         if (!isGrounded)
         {
             universalMovementVector.y += swimmingGravityIncrement;
@@ -925,22 +844,5 @@ public class NewCharacterControllerScript : MonoBehaviour
             characterState = CharacterState.RUNNING;
         }
     }
-    /*
-	Player movement needs to be broken down into states such that one state can transition
-	to another through change in terrain/input. So far states are stationary, running, jumping,
-	falling. Stationary is described as no movement input and can transition into any other
-	state. Running is allowed when a floor is detected and can transition into the other states.
-	Jumping is broken down into what the previous state was, and is subdivided into 3 smaller
-	states. Long jump, regular jump, and high jump. Falling is done either after the initial
-	jumping phase or when a floor is not detected. On each update call the game must first test
-	whether the character is jumping before checking the slope of the floor. This way in impulse
-	to snap the player to the floor is only used if the player is not jumping. Otherwise if the
-	player is jumping then the slope is not checked and an impulse upwards is used instead.
-	During the jumping phase (which is tested each frame by the velocity of the rigid body) a
-	small impulse is added to effectively reduce the effect of gravity during the initial ascent
-	of the jump, gravity is restored to regular value when over the initial jump (and capped off
-	with another value). Another type of impulse is used during the course of a long jump. A 
-	long jump will begin using regular gravity when over the initial height jump of the long
-	jump duration.
-	 */
+    
 }

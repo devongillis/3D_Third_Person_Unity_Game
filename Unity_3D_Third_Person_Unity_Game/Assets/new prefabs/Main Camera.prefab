@@ -355,7 +355,7 @@ AudioSource:
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0
+      value: 1
       inSlope: 0
       outSlope: 0
       tangentMode: 0
@@ -505,7 +505,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   background: []
   sourcePlaying: 0
-  fadeTime: 20
+  fadeTime: 6
   transition: 0
   defaultSource: {fileID: 8300000, guid: 920d1b7fad007744482fc717c4edc472, type: 3}
 --- !u!1 &2751659757172659267

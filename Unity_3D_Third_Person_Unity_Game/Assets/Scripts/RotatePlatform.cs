@@ -20,11 +20,12 @@ public class RotatePlatform : MonoBehaviour
 	{
 		transform.Rotate(world * worldRotationSpeed, Space.World);
 	}
-
+    /*
 	public Vector3 TranslateCharacter(Vector3 characterPosition){
 		Vector3 displacement = characterPosition - transform.position;
 		displacement = Quaternion.Euler(world * worldRotationSpeed) * displacement;
 		Vector3 translate = displacement + transform.position - characterPosition;
 		return translate;
 	}
+    */
 }
