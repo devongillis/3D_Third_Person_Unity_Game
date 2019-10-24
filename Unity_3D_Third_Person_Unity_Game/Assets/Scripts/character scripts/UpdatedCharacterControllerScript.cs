@@ -2,8 +2,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class NewCharacterControllerScript : MonoBehaviour
+public class UpdatedCharacterControllerScript : MonoBehaviour
 {
+    //public float maximumWallHorizontalVelocity;
+    public float maximumPlayerHorizontalVelocity;
+    //public float maximumPlatformVerticalVelocity;
+
+    public float verticalRaycastOffset;
+    public float horizontalRaycastOffset;
 
     Transform cameraT;
     public float distToGround;
@@ -14,25 +20,45 @@ public class NewCharacterControllerScript : MonoBehaviour
     public float forwardHeightMiddle3 = 1.56f;
     public float forwardHeightBottom = 0.75f;
     public float downwardThickness = 0.0f; // the difference between the ground and the position of the character
-    public float downwardHeight = 3.0f; // the height the ray cast starts from (up from position)
-    public float upwardHeight = 2.0f; // the height the ray cast starts from (up from position)
+    //public float downwardHeight = 3.0f; // the height the ray cast starts from (up from position)
+    //public float upwardHeight = 2.0f; // the height the ray cast starts from (up from position)
     public float forwardThickness = 0.3f; // this need to be have the diameter of the total player
 
 
+    // all of these values are the angle of the normal from the vertical plane,clockwise
+    public float regularFloorStart = 0;
+    public float regularFloorSlipperyFloor = 45; // anything below is normal, above is slippery
+    public float SlipperyFloorWall = 80; // anything below is slippery, above is wall
+    public float wallCeiling = 100; // anything below is wall, above is ceiling
+    public float ceiling = 180;
+
+    public float regularFloorStartArc;
+    public float regularFloorSlipperyFloorArc;
+    public float SlipperyFloorWallArc;
+    public float wallCeilingArc;
+    public float ceilingArc;
+
+    public float arcRatio = (2 * Mathf.PI / 360);
+
+
+
     // a wall is defined as any surface with normal.y between -0.174 and 0.174
-    public float wallUpperLimitNormalY = 0.174f; // <=
-    public float wallLowerLimitNormalY = -0.174f; // >=
+    public float wallUpperLimitNormalY;// = 0.174f; // <=
+    public float wallLowerLimitNormalY;// = -0.174f; // >=
     // a regular floor is defined as any surface with normal.y between 0.707 and 1.0
-    public float floorUpperLimitNormalY = 1.0f; // <=
-    public float floorLowerLimitNormalY = 0.707f; // >=
+    public float floorUpperLimitNormalY;// = 1.0f; // <=
+    public float floorLowerLimitNormalY;// = 0.707f; // >=
     // a slippery floor is defined as any surface with normal.y between 0.5 and 0.707
-    public float slipperyFloorUpperLimitNormalY = 0.707f; // <
-    public float slipperyFloorLowerLimitNormalY = 0.5f; // >=
+    public float slipperyFloorUpperLimitNormalY;// = 0.707f; // <
+    public float slipperyFloorLowerLimitNormalY;// = 0.5f; // >=
     // a ceiling is defined as any surface with normal.y between -1.0 and -0.5
-    public float ceilingUpperLimitNormalY = -0.5f; // <=
+    public float ceilingUpperLimitNormalY;// = -0.5f; // <=
     // -1.0f is the minimum value for normal.y so we don't need to use this value for ceilings
-    public float slopeDownwardCheckDistance = 0.0f; // set in start
-    public float slopeWallMinimumForwardSpeed = 0.0f; // set in start
+
+
+    
+    public float slopeDownwardCheckDistance = 0.0f; // set in start, this is for checking if the player should be truncated to the floor by the maximum slope value
+    //public float slopeWallMinimumForwardSpeed = 0.0f; // set in start
 
     // Bit shift the index of the layer (8) to get a bit mask
     public int layerMask = 1 << 8;
@@ -79,9 +105,9 @@ public class NewCharacterControllerScript : MonoBehaviour
 
 
 
-    public float initialJumpVelocity = 0.5f;
-    public float initialHighJumpVelocity = 1.0f;
-    public Vector2 initialLongJumpVelocity = new Vector2(1.0f, 0.5f); // length and height
+    public float initialJumpVelocity = 0.35f;
+    public float initialHighJumpVelocity = 0.45f;
+    public Vector2 initialLongJumpVelocity = new Vector2(0.6f, 0.25f); // length and height
 
 
 
@@ -116,15 +142,62 @@ public class NewCharacterControllerScript : MonoBehaviour
         // But instead we want to collide against everything except layer 8. The ~ operator does this, it inverts a bitmask.
         Application.targetFrameRate = 30;
         layerMask = ~layerMask;
-
         cameraT = Camera.main.transform;
 
-        slopeDownwardCheckDistance = runSpeed / Mathf.Tan(Mathf.Asin(slipperyFloorLowerLimitNormalY));
-        slopeWallMinimumForwardSpeed = maxFallVelocity * Mathf.Tan(Mathf.Asin(wallUpperLimitNormalY));
+
+
+
+        regularFloorStartArc = regularFloorStart * arcRatio;
+        regularFloorSlipperyFloorArc = regularFloorSlipperyFloor * arcRatio;
+        SlipperyFloorWallArc = SlipperyFloorWall * arcRatio;
+        wallCeilingArc = wallCeiling * arcRatio;
+        ceilingArc = ceiling * arcRatio;
+
+
+        // a regular floor is defined as any surface with normal.y between   1.000  and  0.707
+        // a slippery floor is defined as any surface with normal.y between  0.707  and  0.174
+        // a wall is defined as any surface with normal.y between            0.174  and -0.174
+        // a ceiling is defined as any surface with normal.y between        -0.174  and -1.000
+
+        floorUpperLimitNormalY = 1.0f; // floor is <= 1.0
+        floorLowerLimitNormalY = Mathf.Sin((90 - regularFloorSlipperyFloor) * arcRatio); // floor is >= 0.707
+        
+        slipperyFloorUpperLimitNormalY = floorLowerLimitNormalY; // slippery is < 0.707
+        slipperyFloorLowerLimitNormalY = Mathf.Sin((90 - SlipperyFloorWall) * arcRatio); // slippery is > 0.174
+
+        wallUpperLimitNormalY = Mathf.Sin((90 - SlipperyFloorWall) * arcRatio); // wall is <= 0.174
+        wallLowerLimitNormalY = -wallUpperLimitNormalY; // wall is >= -0.174
+
+        ceilingUpperLimitNormalY = Mathf.Sin((90 - wallCeiling) * arcRatio); // ceiling is < -0.174
+
+
+        Debug.Log(1.000 + " " + floorUpperLimitNormalY);
+        Debug.Log(0.707 + " " + floorLowerLimitNormalY);
+
+        Debug.Log(0.707 + " " + slipperyFloorUpperLimitNormalY);
+        Debug.Log(0.174 + " " + slipperyFloorLowerLimitNormalY);
+
+        Debug.Log(0.174 + " " + wallUpperLimitNormalY);
+        Debug.Log(-0.174 + " " + wallLowerLimitNormalY);
+
+        Debug.Log(-0.174 + " " + ceilingUpperLimitNormalY);
+
+
+
+
+
+
+
+        slopeDownwardCheckDistance = runSpeed * Mathf.Tan(SlipperyFloorWallArc); // the distance downward to check for the slope the player is running down on
+        
+        maximumPlayerHorizontalVelocity = Mathf.Max(runSpeed, initialLongJumpVelocity.x);
+        horizontalRaycastOffset = -maxFallVelocity * Mathf.Tan((90 - SlipperyFloorWall) * arcRatio) + 0.3f; // should add a little extra like 0.01f
+        verticalRaycastOffset = maximumPlayerHorizontalVelocity * Mathf.Tan(SlipperyFloorWall * arcRatio); // should add a little extra like 0.01f
+        // the raycasts start at these offsets but must also extend beyond by the amount the player can move
+
+
         anim = gameObject.GetComponentInChildren<Animator>();
         anim.SetFloat("speed", animIdleSpeed);
-
-        Debug.Log((90 - 80) * 2 * Mathf.PI / 360);
     }
 
     // Update is called once per frame
@@ -190,7 +263,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         {
             GroundPoundState();
         }
-        else if(characterState == CharacterState.SWIMMING)
+        else if (characterState == CharacterState.SWIMMING)
         {
             SwimmingState();
         }
@@ -213,52 +286,59 @@ public class NewCharacterControllerScript : MonoBehaviour
 
         // we are moving vertically but not horizontally thus we have no direction for wall collisions
         // must use the transform.forward, and do a vector in all four directions
+        float transX = forwardThickness + (horizontalRaycastOffset - forwardThickness) + 0.01f;
+
         RaycastHit noDirection;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward, out noDirection, forwardThickness + /*this is wrong should be tan*/Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), transform.forward, out noDirection, transX, layerMask))
         {
             xzModified = WallCollsion(noDirection);
         }
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.forward * (horizontalRaycastOffset - forwardThickness), -transform.forward, out noDirection, transX, layerMask))
         {
             xzModified = WallCollsion(noDirection);
         }
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), -transform.right, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.right * (horizontalRaycastOffset - forwardThickness), transform.right, out noDirection, transX, layerMask))
         {
             xzModified = WallCollsion(noDirection);
         }
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), -transform.forward, out noDirection, forwardThickness + Mathf.Sin(wallUpperLimitNormalY) * maxFallVelocity, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.right * (horizontalRaycastOffset - forwardThickness), -transform.right, out noDirection, transX, layerMask))
         {
             xzModified = WallCollsion(noDirection);
         }
 
+
+
+        float transXM = XZ.magnitude + transX;
+
         // remember the distance is based off the universalMovementVector
         // we want the player's thickness included in the raycast
         RaycastHit hitForwardTop;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0), XZ, out hitForwardTop, XZ.magnitude + forwardThickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardTop, transXM, layerMask))
         {
             xzModified = WallCollsion(hitForwardTop);
         }
 
         RaycastHit hitForwardMiddle1;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle1, 0), XZ, out hitForwardMiddle1, XZ.magnitude + forwardThickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle1, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardMiddle1, transXM, layerMask))
         {
             xzModified = WallCollsion(hitForwardMiddle1);
         }
 
         RaycastHit hitForwardMiddle2;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle2, 0), XZ, out hitForwardMiddle2, XZ.magnitude + forwardThickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle2, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardMiddle2, transXM, layerMask))
         {
             xzModified = WallCollsion(hitForwardMiddle2);
         }
 
+
         RaycastHit hitForwardMiddle3;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle3, 0), XZ, out hitForwardMiddle3, XZ.magnitude + forwardThickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle3, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardMiddle3, transXM, layerMask))
         {
             xzModified = WallCollsion(hitForwardMiddle3);
         }
 
         RaycastHit hitForwardBottom;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0), XZ, out hitForwardBottom, XZ.magnitude + forwardThickness, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardBottom, transXM, layerMask))
         {
             xzModified = WallCollsion(hitForwardBottom);
         }
@@ -270,9 +350,8 @@ public class NewCharacterControllerScript : MonoBehaviour
         //if (Y.y <= 0)
         //{
         // we are not moving up (but what if we are slightly moving up and moveing forward really fast then we might clip into floor horizontally
-        float trans = -(Y.y - downwardThickness) + downwardHeight + 0.01f;
-        //slopeVector = Vector3.zero; // reset the slope vector to zero each frame
-        if (Physics.Raycast(transform.position + new Vector3(0, downwardHeight, 0), -transform.up, out hitDownward, trans, layerMask))
+        float transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.01f;
+        if (Physics.Raycast(transform.position + new Vector3(0, verticalRaycastOffset - downwardThickness, 0), -transform.up, out hitDownward, transY, layerMask))
         {
             FloorCollision(hitDownward);
         }
@@ -282,7 +361,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         }
 
         //}
-        
+
         // now we test for the truncated ground movement
         // just check if we are running or stationary, if so then test the truncate
         // we need this as it starts from a different height
@@ -307,11 +386,43 @@ public class NewCharacterControllerScript : MonoBehaviour
         // only if not modified will this function move the player in that coordinate
         MoveCharacter(universalMovementVector + platformRotationVector, xzModified, yModified);
         platformRotationVector = Vector3.zero;
+
+
+
+
+
+
+
+
+
+
+        /*
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 10, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle1, 0), transform.forward * 10, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle2, 0), transform.forward * 10, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle3, 0), transform.forward * 10, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward * 10, Color.red);
+        */
+
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), transform.forward * transX, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.forward * (horizontalRaycastOffset - forwardThickness), -transform.forward * transX, Color.blue);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.right * (horizontalRaycastOffset - forwardThickness), transform.right * transX, Color.green);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.right * (horizontalRaycastOffset - forwardThickness), -transform.right * transX, Color.yellow);
+        /*
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle1, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle2, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle3, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
+        */
+
+
+
+
+
+
+
+
     }
 
     bool WallCollsion(RaycastHit hit)
@@ -338,7 +449,7 @@ public class NewCharacterControllerScript : MonoBehaviour
     bool FloorCollision(RaycastHit hit)
     {
         bool yModified = false;
-        if(hit.normal.y >= 0.5f)
+        if (hit.normal.y >= 0.5f)
         {
             // we have found a floor below we must truncate to it
             float translator = hit.point.y + downwardThickness;
@@ -353,11 +464,11 @@ public class NewCharacterControllerScript : MonoBehaviour
             {
                 hit.collider.gameObject.GetComponent<buttonCollapse>().Collapse();
             }
-            else if(hit.transform.tag == "movingPlatform")
+            else if (hit.transform.tag == "movingPlatform")
             {
                 transform.parent = hit.transform;
             }
-            
+
 
             if (hit.normal.y >= 0.5f && hit.normal.y < slipperyFloorUpperLimitNormalY)
             {
@@ -632,7 +743,7 @@ public class NewCharacterControllerScript : MonoBehaviour
             }
         }
     }
-    
+
     void SlippingState()
     {
         // slipping state will put the character back and down the slope by the moveback vector
@@ -720,8 +831,8 @@ public class NewCharacterControllerScript : MonoBehaviour
             universalMovementVector.y += swimmingGravityIncrement;
             universalMovementVector.y = Mathf.Max(universalMovementVector.y, swimmingMaxFallSpeed);
         }
-        
-        if(!isGrounded && transform.position.y + 2.5f > swimBodyHeight)
+
+        if (!isGrounded && transform.position.y + 2.5f > swimBodyHeight)
         {
             // we are not grounded and too high above the surface
             universalMovementVector.y = -(transform.position.y + 2.5f - swimBodyHeight);
@@ -737,10 +848,10 @@ public class NewCharacterControllerScript : MonoBehaviour
             // player wants to stroke forward
             SwimmingStrokeForward();
         }
-        
-        
 
-        
+
+
+
 
         if (input.y > 0)
         {
@@ -767,7 +878,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         }
         anim.SetFloat("speed", animMoveSpeed);
     }
-    
+
     void SwimmingStrokeUpward()
     {
         // this just sets up the initial speed upward its not a state
@@ -846,5 +957,6 @@ public class NewCharacterControllerScript : MonoBehaviour
             characterState = CharacterState.RUNNING;
         }
     }
-    
+
 }
+
