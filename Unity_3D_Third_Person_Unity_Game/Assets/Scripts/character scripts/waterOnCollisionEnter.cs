@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class waterOnCollisionEnter : MonoBehaviour
 {
-    public GameObject player;
+    //public GameObject player;
     UpdatedCharacterControllerScript script;
     public AudioClip OnEnterWater;
     public GameObject mainCamera;
@@ -12,13 +12,14 @@ public class waterOnCollisionEnter : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        script = player.GetComponent<UpdatedCharacterControllerScript>();
+        //script = player.GetComponent<UpdatedCharacterControllerScript>();
     }
 
     void OnTriggerEnter(Collider other)
     {
         if(other.tag == "Player")
         {
+            script = other.gameObject.GetComponent<UpdatedCharacterControllerScript>();
             mainCamera.GetComponent<cameraAudioManager>().switchBackgroundMusic(OnEnterWater);
         }
     }

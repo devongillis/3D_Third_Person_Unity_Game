@@ -145,7 +145,7 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
             normal.z /= transform.localScale.z;
             normal = normal.normalized;
 
-            //newColors[i] = new Color32(255, 165, 0, 255);
+            // should include "super" edges (floors and walls that are perfect
 
             if (normal.y < ceilingUpperLimitNormalY /*- 0.5f*/)
             {

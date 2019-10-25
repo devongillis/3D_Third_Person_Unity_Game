@@ -79,7 +79,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     // swimming physics
     public float swimmingCoastSpeed = 0.05f;
     public float swimmingCoastGroundedSpeed = 0.07f;
-    public Vector2 swimmingStrokeInitialSpeed = new Vector2(0.15f, 0.1f);
+    public Vector2 swimmingStrokeForwardInitialSpeed = new Vector2(0.15f, 0.1f);
+    public float swimmingStrokeUpwardInitialSpeed = 0.20f;
     public float swimmingGravityIncrement = -0.01f;
     public float swimmingMaxFallSpeed = -0.1f;
     public float swimmingJumpSpeed = 0.1f;
@@ -135,6 +136,13 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public bool InputAccepted = true;
     public int groundPoundTimer = 0;
     public int groundPoundTimeLimit = 60; // frames
+
+
+    int hangStateTimer = 0; // upon entering the hang state all input is ignored for a little bit
+    int hangStateTime = 60;
+    bool allowedToEdgeGrab = true; // this is set false when we don't want to edge grab again until grounded
+    int climbStateTimer = 0;
+    int climbStateTime = 60;
 
 
     // Start is called before the first frame update
@@ -268,6 +276,14 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             SwimmingState();
         }
+        else if(characterState == CharacterState.EDGE_GRAB_HANG)
+        {
+            HangingState();
+        }
+        else if(characterState == CharacterState.EDGE_GRAB_CLIMB)
+        {
+            ClimbEdgeState();
+        }
 
 
         // no matter what state we are in we must check the collisions with the ray cast
@@ -385,52 +401,29 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
         if (!isGrounded)
         {
-            transform.parent = null;
+            if(characterState != CharacterState.EDGE_GRAB_HANG && characterState != CharacterState.EDGE_GRAB_CLIMB)
+            {
+                transform.parent = null;
+            }
+            //transform.parent = null;
         }
 
         // only if not modified will this function move the player in that coordinate
         MoveCharacter(universalMovementVector + platformRotationVector, xzModified, yModified);
         platformRotationVector = Vector3.zero;
 
-
-
-        if (universalMovementVector.y <= 0)
+        if (isGrounded)
         {
-            // we are falling, edge grabbing is allowed
-            RaycastHit hitEdgeForward;
-            RaycastHit hitEdgeDownward;
-            if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward, out hitEdgeForward, 0.6f, layerMask))
-            {
-                // we struck a wall that meets the first definition of an edge
-                if(hitEdgeForward.normal.y >= -0.09f && hitEdgeForward.normal.y <= 0.09f){
-                    if (Physics.Raycast(transform.position + transform.forward * 0.7f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), -transform.up, out hitEdgeDownward, -maxFallVelocity, layerMask))
-                    {
-                        if (hitEdgeDownward.normal.y >= 1 - 0.09f)
-                        {
-                            // we struck an edge and a wall that works
-                            Debug.Log("edge found");
-                            characterState = CharacterState.EDGE_GRAB_HANG;
-                            universalMovementVector = Vector3.zero;
-                            float distanceBack = 0.65f;
-                            float posYOffset = 0.0f;
-                            // need to truncate the player to the wall in a defined space to fit the animation
-                            float posX = hitEdgeForward.point.x + hitEdgeForward.normal.x * distanceBack;
-                            float posZ = hitEdgeForward.point.z + hitEdgeForward.normal.z * distanceBack;
-                            float posY = hitEdgeDownward.point.y - forwardHeightTop + posYOffset;
-                            transform.position = new Vector3(posX, posY, posZ);
-                            anim.SetFloat("speed", 0);
-                            // now we need to create states for edge grabbing and where to put the character when climbing up
-                            // also if player lets go of edge then the player needs to disable edge grab until grounded again
-                            // in edge grab state we should be able to pull up or let go, maybe even shift to the side if more edge
-                            // in that direction exists
-                        }
-                    }
-                }
-            }
+            allowedToEdgeGrab = true;
+        }
+        // do not combine these
+        if (allowedToEdgeGrab)
+        {
+            EdgeCollision();
         }
 
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 0.6f, Color.red);
-        Debug.DrawRay(transform.position + transform.forward * 0.7f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), transform.up * maxFallVelocity, Color.blue);
+        //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 0.6f, Color.red);
+        //Debug.DrawRay(transform.position + transform.forward * 1f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), transform.up * maxFallVelocity, Color.blue);
 
 
 
@@ -567,7 +560,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         return yModified;
     }
 
-
     void MoveCharacter(Vector3 movement, bool xz, bool y)
     {
         // do not use Time.deltaTime
@@ -588,6 +580,58 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             movement.y = 0;
         }
         transform.Translate(movement, Space.World);
+    }
+    
+    void EdgeCollision()
+    {
+        if (universalMovementVector.y <= 0 && !isGrounded)
+        {
+            // we are falling, edge grabbing is allowed
+            RaycastHit hitEdgeForward;
+            RaycastHit hitEdgeDownward;
+
+            if (Physics.Raycast(transform.position + transform.forward * 1f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), -transform.up, out hitEdgeDownward, -maxFallVelocity, layerMask))
+            {
+                if (hitEdgeDownward.normal.y >= 1 - 0.09f)
+                {
+                    if (hitEdgeDownward.transform.tag != "notEdge")
+                    {
+                        if (Physics.Raycast(new Vector3(transform.position.x, hitEdgeDownward.point.y - 0.1f, transform.position.z), transform.forward, out hitEdgeForward, 0.6f, layerMask))
+                        {
+
+                            // we struck a wall that meets the first definition of an edge
+                            if (hitEdgeForward.normal.y >= -0.09f && hitEdgeForward.normal.y <= 0.09f)
+                            {
+
+                                // we struck an edge and a wall that works
+                                Debug.Log("edge found");
+                                characterState = CharacterState.EDGE_GRAB_HANG;
+                                universalMovementVector = Vector3.zero;
+                                float distanceBack = 0.65f;
+                                float posYOffset = 0.0f;
+                                // need to truncate the player to the wall in a defined space to fit the animation
+                                float posX = hitEdgeForward.point.x + hitEdgeForward.normal.x * distanceBack;
+                                float posZ = hitEdgeForward.point.z + hitEdgeForward.normal.z * distanceBack;
+                                float posY = hitEdgeDownward.point.y - forwardHeightTop + posYOffset;
+                                transform.position = new Vector3(posX, posY, posZ);
+                                anim.SetFloat("speed", 0);
+                                hangStateTimer = hangStateTime;
+                                allowedToEdgeGrab = false;
+                                transform.forward = new Vector3(-hitEdgeForward.normal.x, 0, -hitEdgeForward.normal.z);
+                                if (hitEdgeDownward.transform.tag == "rotatingPlatform" || hitEdgeDownward.transform.tag == "movingPlatform")
+                                {
+                                    transform.parent = hitEdgeDownward.transform;
+                                }
+                                // now we need to create states for edge grabbing and where to put the character when climbing up
+                                // also if player lets go of edge then the player needs to disable edge grab until grounded again
+                                // in edge grab state we should be able to pull up or let go, maybe even shift to the side if more edge
+                                // in that direction exists
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void StationaryState()
@@ -872,9 +916,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             else
             {
                 // we are falling during ground pound
-                //controller.Move(new Vector3(0, maxFallVelocity, 0) * Time.deltaTime);
                 universalMovementVector.y = maxFallVelocity;
-                //controller.Move(universalMovementVectorDelta);
             }
         }
         else
@@ -883,10 +925,96 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
     }
 
+    void HangingState()
+    {
+        // in this state the character hangs from the edge we check for input to indicate moving
+        // to the side or to climb up or to let go
+        // left and right no longer factor in the camera they move in respect to the edge
+        // must check if more edge is avaialable to move over to
+        //Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up, out moveRight, 0.2f, layerMask);
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up * 0.2f, Color.red);
+
+        if (hangStateTimer <= 0)
+        {
+            // input now allowed
+            if (input != Vector2.zero)
+            {
+                // input being made
+                if (input.y >= 0.95f)
+                {
+                    // climb up
+                    // must check if a wide enough floor is available to climb up to (use forward ray cast and only if
+                    // no response we can climb up)
+                    Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop + 0.5f, 0), transform.forward * 2.0f, Color.red);
+                    RaycastHit allowedToClimb;
+                    if (!Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.5f, 0), transform.forward, out allowedToClimb, 2.0f, layerMask))
+                    {
+                        Debug.Log("okay");
+                        characterState = CharacterState.EDGE_GRAB_CLIMB;
+                        float TX = transform.forward.x * (0.65f + 1.0f);
+                        float TZ = transform.forward.z * (0.65f + 1.0f);
+                        float TY = forwardHeightTop - 0.01f;
+                        transform.Translate(new Vector3(TX, TY, TZ), Space.World);
+                        climbStateTimer = climbStateTime;
+                    }
+                }
+                else if (input.x >= 0.95f)
+                {
+                    // move right
+                    // first check if more edge is available
+                    RaycastHit moveRight;
+                    if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop - 0.1f, 0) + transform.right * 1f, transform.forward, out moveRight, 0.7f, layerMask))
+                    {
+                        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up, out moveRight, 0.2f, layerMask))
+                        {
+                            // more edge
+                            transform.Translate(transform.right * 0.1f, Space.World);
+                        }
+                    }
+                }
+                else if (input.x <= -0.95f)
+                {
+                    // move left
+                    RaycastHit moveLeft;
+                    if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop - 0.1f, 0) - transform.right * 1f, transform.forward, out moveLeft, 0.7f, layerMask))
+                    {
+                        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) - transform.right * 1f + transform.forward * 1f, -transform.up, out moveLeft, 0.2f, layerMask))
+                        {
+                            // more edge
+                            transform.Translate(-transform.right * 0.1f, Space.World);
+                        }
+                    }
+                }
+                else if (input.y <= -0.95f)
+                {
+                    // let go
+                    characterState = CharacterState.FALLING;
+                }
+            }
+        }
+        else
+        {
+            hangStateTimer--;
+        }
+    }
+
+    void ClimbEdgeState()
+    {
+        // no input allowed only a timer after which we return to stationary
+        if(climbStateTimer <= 0)
+        {
+            characterState = CharacterState.STATIONARY;
+        }
+        else
+        {
+            climbStateTimer--;
+        }
+    }
+
     void SwimmingState()
     {
         // the swimming state works with reduced gravity and speed we do not need to be grounded to move
-        // and jump is now a stroke forward, works like a weak long jump
+        // and jump is now a stroke forward, works like a weak long jump with a decay
         // we should be able to do the stroke even if not grounded, but being grounded lets us walk
         // which is slightly faster than coasting
         // we also need a stroke timer when we stroke we wait until a time limit (with animations) and
@@ -904,7 +1032,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         public float swimmingTurnSmoothTime = 3.0f;
         public float swimmingSpeedSmoothTime = 3.0f;
         */
-
+        //Debug.Log("now is " + currentSpeed);
         if (input != Vector2.zero)
         {
             // all this is to rotate the character in the desired running direction
@@ -916,7 +1044,17 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         float targetSpeed = ((isGrounded) ? swimmingCoastGroundedSpeed : swimmingCoastSpeed) * input.magnitude;
 
         currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime);
-        universalMovementVector = transform.forward * targetSpeed;
+        Debug.Log("now is " + currentSpeed);
+        if (isGrounded)
+        {
+            universalMovementVector.x = transform.forward.x * targetSpeed;
+            universalMovementVector.z = transform.forward.z * targetSpeed;
+        }
+        else
+        {
+            universalMovementVector.x = transform.forward.x * currentSpeed;
+            universalMovementVector.z = transform.forward.z * currentSpeed;
+        }
         //Debug.Log(isGrounded);
         if (!isGrounded)
         {
@@ -933,6 +1071,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (jump > 0)
         {
             // player wants to scroke upwards
+            //Debug.Log("errordskjgbsfhsdfsf");
             SwimmingStrokeUpward();
         }
         else if (Input.GetKey(KeyCode.E))
@@ -970,15 +1109,26 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
         anim.SetFloat("speed", animMoveSpeed);
     }
-
+    
     void SwimmingStrokeUpward()
     {
         // this just sets up the initial speed upward its not a state
+        universalMovementVector.y = swimmingStrokeUpwardInitialSpeed;
     }
-
+    
     void SwimmingStrokeForward()
     {
         // this just sets up the initial speed forward its not a state
+        //universalMovementVector.x = transform.forward.x * swimmingStrokeForwardInitialSpeed.x;
+        //universalMovementVector.z = transform.forward.z * swimmingStrokeForwardInitialSpeed.x;
+        currentSpeed = swimmingStrokeForwardInitialSpeed.x;
+        Debug.Log("set to " + currentSpeed);
+        Debug.Log("set to " + currentSpeed);
+        Debug.Log("set to " + currentSpeed);
+        Debug.Log("set to " + currentSpeed);
+        Debug.Log("set to " + currentSpeed);
+        Debug.Log("set to " + currentSpeed);
+        universalMovementVector.y = swimmingStrokeForwardInitialSpeed.y;
     }
 
     void LongJump()
@@ -1021,7 +1171,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         SWIMMING,
         SWIMMING_STROKE_UP,
         SWIMMING_STROKE_FORWARD,
-        EDGE_GRAB_HANG
+        EDGE_GRAB_HANG,
+        EDGE_GRAB_CLIMB
         // a function is called to set this value and must clean up a few values before forcing a no input senario
 
     }
@@ -1034,11 +1185,12 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     public void SwitchIntoSwimState(float height)
     {
-        if (characterState != CharacterState.SWIMMING || characterState != CharacterState.SWIMMING_STROKE_FORWARD || characterState != CharacterState.SWIMMING_STROKE_UP)
+        if (characterState != CharacterState.SWIMMING && characterState != CharacterState.SWIMMING_STROKE_FORWARD && characterState != CharacterState.SWIMMING_STROKE_UP)
         {
             swimBodyHeight = height;
-            //Debug.Log("player is swimming");
+            Debug.Log("player is swimming");
             characterState = CharacterState.SWIMMING;
+            currentSpeed = 0;
         }
     }
 
@@ -1052,4 +1204,3 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     }
 
 }
-
