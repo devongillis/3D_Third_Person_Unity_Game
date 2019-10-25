@@ -124,7 +124,7 @@ public class NewCharacterControllerScript : MonoBehaviour
         anim = gameObject.GetComponentInChildren<Animator>();
         anim.SetFloat("speed", animIdleSpeed);
 
-        Debug.Log((90 - 80) * 2 * Mathf.PI / 360);
+        //Debug.Log((90 - 80) * 2 * Mathf.PI / 360);
     }
 
     // Update is called once per frame

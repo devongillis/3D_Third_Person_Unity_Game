@@ -77,7 +77,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public float runSpeed = 0.3f;
 
     // swimming physics
-    public float swimmingCoastSpeed = 0.5f;
+    public float swimmingCoastSpeed = 0.05f;
     public float swimmingCoastGroundedSpeed = 0.07f;
     public Vector2 swimmingStrokeInitialSpeed = new Vector2(0.15f, 0.1f);
     public float swimmingGravityIncrement = -0.01f;
@@ -102,7 +102,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
     float currentSpeed;
-
+    float wallTouchSpeed = 0.01f;
+    bool touchingWall = false;
 
 
     public float initialJumpVelocity = 0.35f;
@@ -171,16 +172,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         ceilingUpperLimitNormalY = Mathf.Sin((90 - wallCeiling) * arcRatio); // ceiling is < -0.174
 
 
-        Debug.Log(1.000 + " " + floorUpperLimitNormalY);
-        Debug.Log(0.707 + " " + floorLowerLimitNormalY);
+        //Debug.Log(1.000 + " " + floorUpperLimitNormalY);
+        //Debug.Log(0.707 + " " + floorLowerLimitNormalY);
 
-        Debug.Log(0.707 + " " + slipperyFloorUpperLimitNormalY);
-        Debug.Log(0.174 + " " + slipperyFloorLowerLimitNormalY);
+        //Debug.Log(0.707 + " " + slipperyFloorUpperLimitNormalY);
+        //Debug.Log(0.174 + " " + slipperyFloorLowerLimitNormalY);
 
-        Debug.Log(0.174 + " " + wallUpperLimitNormalY);
-        Debug.Log(-0.174 + " " + wallLowerLimitNormalY);
+        //Debug.Log(0.174 + " " + wallUpperLimitNormalY);
+        //Debug.Log(-0.174 + " " + wallLowerLimitNormalY);
 
-        Debug.Log(-0.174 + " " + ceilingUpperLimitNormalY);
+        //Debug.Log(-0.174 + " " + ceilingUpperLimitNormalY);
 
 
 
@@ -192,9 +193,9 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         
         maximumPlayerHorizontalVelocity = Mathf.Max(runSpeed, initialLongJumpVelocity.x);
         horizontalRaycastOffset = -maxFallVelocity * Mathf.Tan((90 - SlipperyFloorWall) * arcRatio) + 0.3f; // should add a little extra like 0.01f
-        verticalRaycastOffset = maximumPlayerHorizontalVelocity * Mathf.Tan(SlipperyFloorWall * arcRatio); // should add a little extra like 0.01f
+        verticalRaycastOffset = maximumPlayerHorizontalVelocity * Mathf.Tan(SlipperyFloorWall * arcRatio) + 0.0f; // should add a little extra like 0.01f
         // the raycasts start at these offsets but must also extend beyond by the amount the player can move
-
+        //Debug.Log(verticalRaycastOffset + "offset");
 
         anim = gameObject.GetComponentInChildren<Animator>();
         anim.SetFloat("speed", animIdleSpeed);
@@ -349,11 +350,15 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         isGrounded = false;
         //if (Y.y <= 0)
         //{
+        if (characterState == CharacterState.SLIPPING_NO_CONTROL)
+        {
+            characterState = CharacterState.STATIONARY;
+        }
         // we are not moving up (but what if we are slightly moving up and moveing forward really fast then we might clip into floor horizontally
         float transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.01f;
         if (Physics.Raycast(transform.position + new Vector3(0, verticalRaycastOffset - downwardThickness, 0), -transform.up, out hitDownward, transY, layerMask))
         {
-            FloorCollision(hitDownward);
+            yModified = FloorCollision(hitDownward, false, ref XZ, ref xzModified); // double check if we want to know if ymodified
         }
         else
         {
@@ -371,7 +376,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             RaycastHit truncate;
             if (Physics.Raycast(transform.position + new Vector3(0, 0.01f, 0), -transform.up, out truncate, slopeDownwardCheckDistance + 0.01f, layerMask))
             {
-                FloorCollision(truncate);
+                yModified = FloorCollision(truncate, true, ref XZ, ref xzModified);
             }
             else
             {
@@ -389,10 +394,43 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
 
+        if (universalMovementVector.y <= 0)
+        {
+            // we are falling, edge grabbing is allowed
+            RaycastHit hitEdgeForward;
+            RaycastHit hitEdgeDownward;
+            if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward, out hitEdgeForward, 0.6f, layerMask))
+            {
+                // we struck a wall that meets the first definition of an edge
+                if(hitEdgeForward.normal.y >= -0.09f && hitEdgeForward.normal.y <= 0.09f){
+                    if (Physics.Raycast(transform.position + transform.forward * 0.7f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), -transform.up, out hitEdgeDownward, -maxFallVelocity, layerMask))
+                    {
+                        if (hitEdgeDownward.normal.y >= 1 - 0.09f)
+                        {
+                            // we struck an edge and a wall that works
+                            Debug.Log("edge found");
+                            characterState = CharacterState.EDGE_GRAB_HANG;
+                            universalMovementVector = Vector3.zero;
+                            float distanceBack = 0.65f;
+                            float posYOffset = 0.0f;
+                            // need to truncate the player to the wall in a defined space to fit the animation
+                            float posX = hitEdgeForward.point.x + hitEdgeForward.normal.x * distanceBack;
+                            float posZ = hitEdgeForward.point.z + hitEdgeForward.normal.z * distanceBack;
+                            float posY = hitEdgeDownward.point.y - forwardHeightTop + posYOffset;
+                            transform.position = new Vector3(posX, posY, posZ);
+                            anim.SetFloat("speed", 0);
+                            // now we need to create states for edge grabbing and where to put the character when climbing up
+                            // also if player lets go of edge then the player needs to disable edge grab until grounded again
+                            // in edge grab state we should be able to pull up or let go, maybe even shift to the side if more edge
+                            // in that direction exists
+                        }
+                    }
+                }
+            }
+        }
 
-
-
-
+        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 0.6f, Color.red);
+        Debug.DrawRay(transform.position + transform.forward * 0.7f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), transform.up * maxFallVelocity, Color.blue);
 
 
 
@@ -403,11 +441,12 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle3, 0), transform.forward * 10, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward * 10, Color.red);
         */
-
+        /*
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), transform.forward * transX, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.forward * (horizontalRaycastOffset - forwardThickness), -transform.forward * transX, Color.blue);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.right * (horizontalRaycastOffset - forwardThickness), transform.right * transX, Color.green);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.right * (horizontalRaycastOffset - forwardThickness), -transform.right * transX, Color.yellow);
+        */
         /*
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
         Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle1, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
@@ -430,7 +469,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         bool xzModified = false;
         if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
         {
-            Vector3 translator = hit.point + hit.normal * forwardThickness;
+            Vector3 translator = hit.point + hit.normal * (forwardThickness + 0.01f);
             transform.position = new Vector3(translator.x, transform.position.y, translator.z);
             xzModified = true;
             if (!isGrounded && currentSpeed > walkSpeed)
@@ -438,6 +477,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
             }
             currentSpeed = 0.0f;
+            touchingWall = true;
         }
         else
         {
@@ -446,10 +486,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         return xzModified;
     }
 
-    bool FloorCollision(RaycastHit hit)
+    bool FloorCollision(RaycastHit hit, bool truncate, ref Vector3 xz, ref bool xzModified)
     {
         bool yModified = false;
-        if (hit.normal.y >= 0.5f)
+        if (hit.normal.y >= slipperyFloorLowerLimitNormalY /*0.5f*/)
         {
             // we have found a floor below we must truncate to it
             float translator = hit.point.y + downwardThickness;
@@ -468,7 +508,48 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             {
                 transform.parent = hit.transform;
             }
+            
+            // now we need to move the character back by a value proportional to the slope
+            if (!truncate)
+            {
+                // instead use this code for forcing the player to slip
+                /*
+                Vector3 moveBack = Mathf.Sin(90 * arcRatio - Mathf.Asin(hit.normal.y)) * xz * 0.5f;
+                Debug.Log(moveBack + " " + xz);
+                xz -= moveBack;
+                transform.Translate(xz, Space.World);
+                xzModified = true;
+                */
+                //Vector3 moveBack = Mathf.Sin(90 * arcRatio - Mathf.Asin(hit.normal.y)) * xz * 0.5f;
+                //Debug.Log(moveBack + " " + xz);
 
+                /*
+                xz *= Mathf.Sqrt(Mathf.Sqrt(hit.normal.y));
+                transform.Translate(xz, Space.World);
+                xzModified = true;
+                */
+                //Debug.Log(hit.normal.y + " fuck");
+                /*
+                if(hit.normal.y < slipperyFloorUpperLimitNormalY)
+                {
+                    // slippery
+                    characterState = CharacterState.SLIPPING_NO_CONTROL;
+                    universalMovementVector.x = 0;
+                    universalMovementVector.z = 0;
+                    //universalMovementVector.y -= 0.01f;
+                    // we should also enter the slip state
+                    xz = hit.normal;
+                    xz.y = 0;
+                    xz *= 0.2f;
+                    transform.Translate(xz, Space.World);
+                    xzModified = true;
+                }
+                else
+                {
+                    
+                }
+                */
+            }
 
             if (hit.normal.y >= 0.5f && hit.normal.y < slipperyFloorUpperLimitNormalY)
             {
@@ -588,6 +669,14 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
             // determine the speed at which to move the player
             float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+            /*
+            if (touchingWall)
+            {
+                Debug.Log("touching" + currentSpeed);
+                targetSpeed = 0;
+                touchingWall = false;
+            }
+            */
             currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, runningSpeedSmoothTime);
             universalMovementVector = transform.forward * currentSpeed;
 
@@ -755,8 +844,11 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // intially from another state the character moves and the OnControllerColliderHit function is called within after moving
         // this should then determine a vector to move back and down by and set the state to slipping, on the first slipping call
         // we move by the moveback vector and thus call the collision function again it will decide wether to swap the state
-
-        characterState = CharacterState.STATIONARY;
+        if (!isGrounded)
+        {
+            //characterState = CharacterState.FALLING;
+        }
+        //characterState = CharacterState.STATIONARY;
         // the slope has been determined by the raycast and it will have saved it in a vector
         // we move by this vector, might want to adjust speed by the angle of the slope (60 = 0 and 90 = max)
         //universalMovementVector = slopeVector * slopeSlipSpeed;
@@ -928,7 +1020,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         GROUND_POUND,
         SWIMMING,
         SWIMMING_STROKE_UP,
-        SWIMMING_STROKE_FORWARD
+        SWIMMING_STROKE_FORWARD,
+        EDGE_GRAB_HANG
         // a function is called to set this value and must clean up a few values before forcing a no input senario
 
     }

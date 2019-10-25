@@ -7,16 +7,16 @@ public class toxicGas : MonoBehaviour
     // Start is called before the first frame update
 
 	public Vector2 scrollSpeed = new Vector2(0.02f, 0.02f);
-	Renderer renderer;
+	Renderer gasRenderer;
 
     void Start()
     {
-		renderer = GetComponent<Renderer>();
+        gasRenderer = GetComponent<Renderer>();
     }
 
     // Update is called once per frame
     void Update()
     {
-		renderer.material.mainTextureOffset = scrollSpeed * Time.time;
+        gasRenderer.material.mainTextureOffset = scrollSpeed * Time.time;
     }
 }

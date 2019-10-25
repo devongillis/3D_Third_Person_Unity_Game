@@ -5,21 +5,21 @@ using UnityEngine;
 public class waterOnCollisionEnter : MonoBehaviour
 {
     public GameObject player;
-    NewCharacterControllerScript script;
+    UpdatedCharacterControllerScript script;
     public AudioClip OnEnterWater;
-    public GameObject camera;
+    public GameObject mainCamera;
 
     // Start is called before the first frame update
     void Start()
     {
-        script = player.GetComponent<NewCharacterControllerScript>();
+        script = player.GetComponent<UpdatedCharacterControllerScript>();
     }
 
     void OnTriggerEnter(Collider other)
     {
         if(other.tag == "Player")
         {
-            camera.GetComponent<cameraAudioManager>().switchBackgroundMusic(OnEnterWater);
+            mainCamera.GetComponent<cameraAudioManager>().switchBackgroundMusic(OnEnterWater);
         }
     }
 

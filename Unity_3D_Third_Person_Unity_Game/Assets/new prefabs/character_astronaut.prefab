@@ -418,6 +418,7 @@ GameObject:
   - component: {fileID: 7160248125993985966}
   - component: {fileID: 5045641763215510493}
   - component: {fileID: -8102763824890657188}
+  - component: {fileID: 1582782752}
   m_Layer: 0
   m_Name: character_astronaut
   m_TagString: Player
@@ -495,7 +496,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1986570594344354682}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 5949d0e5f39a0a042bb28ede8016f4dd, type: 3}
   m_Name: 
@@ -583,6 +584,82 @@ Rigidbody:
   m_Interpolate: 0
   m_Constraints: 126
   m_CollisionDetection: 0
+--- !u!114 &1582782752
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1986570594344354682}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f02ad2d5c78418c45b713d973167b7c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maximumPlayerHorizontalVelocity: 0
+  verticalRaycastOffset: 0
+  horizontalRaycastOffset: 0
+  distToGround: 0
+  isGrounded: 1
+  forwardHeightTop: 4
+  forwardHeightMiddle1: 3.12
+  forwardHeightMiddle2: 2.38
+  forwardHeightMiddle3: 1.56
+  forwardHeightBottom: 0.75
+  downwardThickness: 0
+  forwardThickness: 0.3
+  regularFloorStart: 0
+  regularFloorSlipperyFloor: 45
+  SlipperyFloorWall: 80
+  wallCeiling: 100
+  ceiling: 180
+  regularFloorStartArc: 0
+  regularFloorSlipperyFloorArc: 0
+  SlipperyFloorWallArc: 0
+  wallCeilingArc: 0
+  ceilingArc: 0
+  arcRatio: 0.017453292
+  wallUpperLimitNormalY: 0
+  wallLowerLimitNormalY: 0
+  floorUpperLimitNormalY: 0
+  floorLowerLimitNormalY: 0
+  slipperyFloorUpperLimitNormalY: 0
+  slipperyFloorLowerLimitNormalY: 0
+  ceilingUpperLimitNormalY: 0
+  slopeDownwardCheckDistance: 0
+  layerMask: 256
+  animMoveSpeed: 0
+  animDeltaSpeed: 0.01
+  animIdleSpeed: 0
+  animWalkSpeed: 0.6
+  animRunSpeed: 1
+  characterState: 0
+  walkSpeed: 0.15
+  runSpeed: 0.3
+  swimmingCoastSpeed: 0.05
+  swimmingCoastGroundedSpeed: 0.07
+  swimmingStrokeInitialSpeed: {x: 0.15, y: 0.1}
+  swimmingGravityIncrement: -0.01
+  swimmingMaxFallSpeed: -0.1
+  swimmingJumpSpeed: 0.1
+  swimmingTurnSmoothTime: 1
+  swimmingSpeedSmoothTime: 3
+  swimBodyHeight: 0
+  gravityIncrement: -0.01
+  maxFallVelocity: -1
+  groundDistanceCheck: 0.1
+  turnSmoothTime: 1
+  JumpingSpeedSmoothTime: 0.1
+  runningSpeedSmoothTime: 0.5
+  initialJumpVelocity: 0.35
+  initialHighJumpVelocity: 0.45
+  initialLongJumpVelocity: {x: 0.6, y: 0.25}
+  running: 0
+  universalMovementVector: {x: 0, y: 0, z: 0}
+  platformRotationVector: {x: 0, y: 0, z: 0}
+  InputAccepted: 1
+  groundPoundTimer: 0
+  groundPoundTimeLimit: 60
 --- !u!1 &2564072032087702268
 GameObject:
   m_ObjectHideFlags: 0
