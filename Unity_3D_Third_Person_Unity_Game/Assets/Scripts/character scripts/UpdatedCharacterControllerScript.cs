@@ -23,13 +23,15 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     // all of these values are the angle of the normal from the vertical plane,clockwise
     public float regularFloorStart = 0;
-    public float regularFloorSlipperyFloor = 45; // anything below is normal, above is slippery
+    public float regularFloorSemiSlipperyFloor = 30; // anything below is normal, above is semi slippery
+    public float SemiSlipperyFloorSlipperyFloor = 60; // anything below is semi slippery, above is slippery
     public float SlipperyFloorWall = 80; // anything below is slippery, above is wall
     public float wallCeiling = 100; // anything below is wall, above is ceiling
     public float ceiling = 180;
 
     public float regularFloorStartArc;
-    public float regularFloorSlipperyFloorArc;
+    public float regularFloorSemiSlipperyFloorArc;
+    public float semiSlipperyFloorSlipperyFloorArc;
     public float SlipperyFloorWallArc;
     public float wallCeilingArc;
     public float ceilingArc;
@@ -38,17 +40,21 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
 
+    
+    // a regular floor is defined as any surface with normal.y between 0.866 and 1.0
+    public float floorUpperLimitNormalY;// = 1.0f; // <=
+    public float floorLowerLimitNormalY;// = 0.866f; // >=
+    // a semi slippery floor is defined as any surface with normal.y between 0.5 and 0.866
+    public float semiSlipperyFloorUpperLimitNormalY; // = 0.866f; // <
+    public float semiSlipperyFloorLowerLimitNormalY; // = 0.5f; // <
+    // a slippery floor is defined as any surface with normal.y between 0.174 and 0.5
+    public float slipperyFloorUpperLimitNormalY;// = 0.5f; // <
+    public float slipperyFloorLowerLimitNormalY;// = 0.174f; // >=
     // a wall is defined as any surface with normal.y between -0.174 and 0.174
     public float wallUpperLimitNormalY;// = 0.174f; // <=
     public float wallLowerLimitNormalY;// = -0.174f; // >=
-    // a regular floor is defined as any surface with normal.y between 0.707 and 1.0
-    public float floorUpperLimitNormalY;// = 1.0f; // <=
-    public float floorLowerLimitNormalY;// = 0.707f; // >=
-    // a slippery floor is defined as any surface with normal.y between 0.5 and 0.707
-    public float slipperyFloorUpperLimitNormalY;// = 0.707f; // <
-    public float slipperyFloorLowerLimitNormalY;// = 0.5f; // >=
-    // a ceiling is defined as any surface with normal.y between -1.0 and -0.5
-    public float ceilingUpperLimitNormalY;// = -0.5f; // <=
+    // a ceiling is defined as any surface with normal.y between -1.0 and -0.174
+    public float ceilingUpperLimitNormalY;// = -0.174; // <=
     // -1.0f is the minimum value for normal.y so we don't need to use this value for ceilings
 
 
@@ -71,6 +77,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     public float walkSpeed = 0.15f;
     public float runSpeed = 0.3f;
+    public float slipSpeed = 0.05f;
 
     // swimming physics
     public float swimmingCoastSpeed = 0.05f;
@@ -162,7 +169,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
         regularFloorStartArc = regularFloorStart * arcRatio;
-        regularFloorSlipperyFloorArc = regularFloorSlipperyFloor * arcRatio;
+        regularFloorSemiSlipperyFloorArc = regularFloorSemiSlipperyFloor * arcRatio;
+        semiSlipperyFloorSlipperyFloorArc = SemiSlipperyFloorSlipperyFloor * arcRatio;
         SlipperyFloorWallArc = SlipperyFloorWall * arcRatio;
         wallCeilingArc = wallCeiling * arcRatio;
         ceilingArc = ceiling * arcRatio;
@@ -174,23 +182,33 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // a ceiling is defined as any surface with normal.y between        -0.174  and -1.000
 
         floorUpperLimitNormalY = 1.0f; // floor is <= 1.0
-        floorLowerLimitNormalY = Mathf.Sin((90 - regularFloorSlipperyFloor) * arcRatio); // floor is >= 0.707
-        
-        slipperyFloorUpperLimitNormalY = floorLowerLimitNormalY; // slippery is < 0.707
+        floorLowerLimitNormalY = Mathf.Sin((90 - regularFloorSemiSlipperyFloor) * arcRatio); // floor is >= 0.866
+
+
+        semiSlipperyFloorUpperLimitNormalY = floorLowerLimitNormalY; // semi slippery is < 0.866f
+        semiSlipperyFloorLowerLimitNormalY = Mathf.Sin((90 - SemiSlipperyFloorSlipperyFloor) * arcRatio); // semi slippery is >= 0.5f
+
+        slipperyFloorUpperLimitNormalY = semiSlipperyFloorLowerLimitNormalY; // slippery is < 0.5
         slipperyFloorLowerLimitNormalY = Mathf.Sin((90 - SlipperyFloorWall) * arcRatio); // slippery is > 0.174
 
-        wallUpperLimitNormalY = Mathf.Sin((90 - SlipperyFloorWall) * arcRatio); // wall is <= 0.174
+        wallUpperLimitNormalY = slipperyFloorLowerLimitNormalY; // wall is <= 0.174
         wallLowerLimitNormalY = -wallUpperLimitNormalY; // wall is >= -0.174
 
         ceilingUpperLimitNormalY = Mathf.Sin((90 - wallCeiling) * arcRatio); // ceiling is < -0.174
-
+        
         slopeDownwardCheckDistance = runSpeed * Mathf.Tan(SlipperyFloorWallArc); // the distance downward to check for the slope the player is running down on
         
         maximumPlayerHorizontalVelocity = Mathf.Max(runSpeed, initialLongJumpVelocity.x);
+        // not too sure but given a slope will move us back by a maxium of the current walk speed even if walk with
+        // the slope, if we set that value to run speed the the fastest horizontal movement is now at 2 * runSpeed
+        // when the player runs down a 60 degree slope, but this value is only used to get a vertical raycast
+        // which is a fail safe value for when we run UP a slope, thus since we are moving down when exploiting the
+        // slope max horizontal speed we are actually moving down and don't need to worry about this
+        //maximumPlayerHorizontalVelocity = Mathf.Max(runSpeed * 2, initialLongJumpVelocity.x);
+
         horizontalRaycastOffset = -maxFallVelocity * Mathf.Tan((90 - SlipperyFloorWall) * arcRatio) + 0.3f; // should add a little extra like 0.01f
         verticalRaycastOffset = maximumPlayerHorizontalVelocity * Mathf.Tan(SlipperyFloorWall * arcRatio) + 0.0f; // should add a little extra like 0.01f
         // the raycasts start at these offsets but must also extend beyond by the amount the player can move
-        //Debug.Log(verticalRaycastOffset + "offset");
 
         anim = gameObject.GetComponentInChildren<Animator>();
         anim.SetFloat("speed", animIdleSpeed);
@@ -363,7 +381,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             characterState = CharacterState.STATIONARY;
         }
         // we are not moving up (but what if we are slightly moving up and moving forward really fast then we might clip into floor horizontally
-        float transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.01f;
+        float transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.1f; // 0.1f check for bigger slope values
         if (Physics.Raycast(transform.position + new Vector3(0, verticalRaycastOffset - downwardThickness, 0), -transform.up, out hitDownward, transY, layerMask))
         {
             yModified = FloorCollision(hitDownward, false, ref XZ, ref xzModified); // double check if we want to know if ymodified
@@ -422,7 +440,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         bool xzModified = false;
         if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
         {
-            Vector3 translator = hit.point + hit.normal * (forwardThickness + 0.01f);
+            Vector3 translator = hit.point + hit.normal * (forwardThickness + 0.02f);
             transform.position = new Vector3(translator.x, transform.position.y, translator.z);
             xzModified = true;
             if (!isGrounded && currentSpeed > walkSpeed)
@@ -442,7 +460,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     bool FloorCollision(RaycastHit hit, bool truncate, ref Vector3 xz, ref bool xzModified)
     {
         bool yModified = false;
-        if (hit.normal.y >= slipperyFloorLowerLimitNormalY)
+        if (hit.normal.y > slipperyFloorLowerLimitNormalY) // the boundary between wall and slippery floor
         {
             // we have found a floor below we must truncate to it
             float translator = hit.point.y + downwardThickness;
@@ -461,56 +479,34 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             {
                 transform.parent = hit.transform;
             }
-            
+
             // now we need to move the character back by a value proportional to the slope
+            // we haven't applied the universal vector yet so we need to limit its values
             if (!truncate)
             {
-                // instead use this code for forcing the player to slip
-                /*
-                Vector3 moveBack = Mathf.Sin(90 * arcRatio - Mathf.Asin(hit.normal.y)) * xz * 0.5f;
-                Debug.Log(moveBack + " " + xz);
-                xz -= moveBack;
-                transform.Translate(xz, Space.World);
-                xzModified = true;
-                */
-                //Vector3 moveBack = Mathf.Sin(90 * arcRatio - Mathf.Asin(hit.normal.y)) * xz * 0.5f;
-                //Debug.Log(moveBack + " " + xz);
-
-                /*
-                xz *= Mathf.Sqrt(Mathf.Sqrt(hit.normal.y));
-                transform.Translate(xz, Space.World);
-                xzModified = true;
-                */
-                //Debug.Log(hit.normal.y + " fuck");
-                /*
-                if(hit.normal.y < slipperyFloorUpperLimitNormalY)
+                if (hit.normal.y < slipperyFloorUpperLimitNormalY) // 0.5
                 {
-                    // slippery
+                    // slippery slope
                     characterState = CharacterState.SLIPPING_NO_CONTROL;
-                    universalMovementVector.x = 0;
-                    universalMovementVector.z = 0;
-                    //universalMovementVector.y -= 0.01f;
-                    // we should also enter the slip state
-                    xz = hit.normal;
-                    xz.y = 0;
-                    xz *= 0.2f;
-                    transform.Translate(xz, Space.World);
+                    transform.Translate(new Vector3(hit.normal.x * slipSpeed, 0, hit.normal.z * slipSpeed));
                     xzModified = true;
+                    
+                }
+                else if (hit.normal.y <= semiSlipperyFloorUpperLimitNormalY)
+                {
+                    // semi slippery slope
+                    Vector2 uxz = new Vector2(universalMovementVector.x, universalMovementVector.z);
+                    float um = uxz.magnitude;
+                    float deduction = (semiSlipperyFloorUpperLimitNormalY - hit.normal.y) / (semiSlipperyFloorUpperLimitNormalY - semiSlipperyFloorLowerLimitNormalY);
+                    Vector2 normal = new Vector2(hit.normal.x, hit.normal.z);
+                    normal.Normalize();
+                    universalMovementVector.x += normal.x * deduction * walkSpeed;
+                    universalMovementVector.z += normal.y * deduction * walkSpeed;
                 }
                 else
                 {
-                    
+                    // regular floor
                 }
-                */
-            }
-            
-            if (hit.normal.y < slipperyFloorUpperLimitNormalY)
-            {
-                // slippery slope
-            }
-            else if (hit.normal.y >= slipperyFloorUpperLimitNormalY)
-            {
-                // regular floor
             }
         }
         else
