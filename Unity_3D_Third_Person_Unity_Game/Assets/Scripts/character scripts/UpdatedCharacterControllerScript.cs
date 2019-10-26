@@ -4,9 +4,7 @@ using UnityEngine;
 
 public class UpdatedCharacterControllerScript : MonoBehaviour
 {
-    //public float maximumWallHorizontalVelocity;
     public float maximumPlayerHorizontalVelocity;
-    //public float maximumPlatformVerticalVelocity;
 
     public float verticalRaycastOffset;
     public float horizontalRaycastOffset;
@@ -20,8 +18,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public float forwardHeightMiddle3 = 1.56f;
     public float forwardHeightBottom = 0.75f;
     public float downwardThickness = 0.0f; // the difference between the ground and the position of the character
-    //public float downwardHeight = 3.0f; // the height the ray cast starts from (up from position)
-    //public float upwardHeight = 2.0f; // the height the ray cast starts from (up from position)
     public float forwardThickness = 0.3f; // this need to be have the diameter of the total player
 
 
@@ -61,7 +57,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     //public float slopeWallMinimumForwardSpeed = 0.0f; // set in start
 
     // Bit shift the index of the layer (8) to get a bit mask
-    public int layerMask = 1 << 8;
+    public int layerMask = ~(1 << 8);
     // This would cast rays only against colliders in layer 8.
 
     private Animator anim;
@@ -103,8 +99,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
     float currentSpeed;
-    float wallTouchSpeed = 0.01f;
-    bool touchingWall = false;
+    //float wallTouchSpeed = 0.01f;
+    //bool touchingWall = false;
 
 
     public float initialJumpVelocity = 0.35f;
@@ -116,6 +112,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     // input variables
     Vector2 input;
+    Vector2 inputRaw;
     float jump;
     float specialJump;
     float groundPound;
@@ -138,12 +135,20 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public int groundPoundTimeLimit = 60; // frames
 
 
-    int hangStateTimer = 0; // upon entering the hang state all input is ignored for a little bit
-    int hangStateTime = 60;
-    bool allowedToEdgeGrab = true; // this is set false when we don't want to edge grab again until grounded
-    int climbStateTimer = 0;
-    int climbStateTime = 60;
+    public int hangStateTimer = 0; // upon entering the hang state all input is ignored for a little bit
+    public int hangStateTime = 60;
+    public bool allowedToEdgeGrab = true; // this is set false when we don't want to edge grab again until grounded
+    public int climbStateTimer = 0;
+    public int climbStateTime = 60;
 
+
+    public int poleLeaveTimer = 0;
+    public int PoleLeaveTime = 5;
+    public bool allowedToGrabPole = true; // set to false if player just lets go, and set to true upon being grounded
+    public float poleClimbRate = 0.1f;
+    public float poleDescendRate = -0.5f;
+    public float poleRotateSpeed = 1f;
+    public Vector2 poleInitialJumpVelocity = new Vector2(0.3f, 0.3f);
 
     // Start is called before the first frame update
     void Start()
@@ -179,24 +184,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
         ceilingUpperLimitNormalY = Mathf.Sin((90 - wallCeiling) * arcRatio); // ceiling is < -0.174
 
-
-        //Debug.Log(1.000 + " " + floorUpperLimitNormalY);
-        //Debug.Log(0.707 + " " + floorLowerLimitNormalY);
-
-        //Debug.Log(0.707 + " " + slipperyFloorUpperLimitNormalY);
-        //Debug.Log(0.174 + " " + slipperyFloorLowerLimitNormalY);
-
-        //Debug.Log(0.174 + " " + wallUpperLimitNormalY);
-        //Debug.Log(-0.174 + " " + wallLowerLimitNormalY);
-
-        //Debug.Log(-0.174 + " " + ceilingUpperLimitNormalY);
-
-
-
-
-
-
-
         slopeDownwardCheckDistance = runSpeed * Mathf.Tan(SlipperyFloorWallArc); // the distance downward to check for the slope the player is running down on
         
         maximumPlayerHorizontalVelocity = Mathf.Max(runSpeed, initialLongJumpVelocity.x);
@@ -221,6 +208,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             // act like no inputs being made
             input = new Vector2(0, 0);
+            inputRaw = new Vector2(0, 0);
             jump = 0;
             specialJump = 0;
             groundPound = 0;
@@ -229,6 +217,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             // inputs are allowed
             input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            inputRaw = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             input = input.normalized;
             jump = Input.GetAxisRaw("Jump");
             specialJump = Input.GetAxisRaw("Special Jump");
@@ -283,6 +272,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         else if(characterState == CharacterState.EDGE_GRAB_CLIMB)
         {
             ClimbEdgeState();
+        }
+        else if(characterState == CharacterState.POLE_GRABBING)
+        {
+            PoleGrabbingState();
         }
 
 
@@ -364,13 +357,12 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // to the floor
         RaycastHit hitDownward;
         isGrounded = false;
-        //if (Y.y <= 0)
-        //{
+        
         if (characterState == CharacterState.SLIPPING_NO_CONTROL)
         {
             characterState = CharacterState.STATIONARY;
         }
-        // we are not moving up (but what if we are slightly moving up and moveing forward really fast then we might clip into floor horizontally
+        // we are not moving up (but what if we are slightly moving up and moving forward really fast then we might clip into floor horizontally
         float transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.01f;
         if (Physics.Raycast(transform.position + new Vector3(0, verticalRaycastOffset - downwardThickness, 0), -transform.up, out hitDownward, transY, layerMask))
         {
@@ -380,8 +372,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             isGrounded = false;
         }
-
-        //}
+        
 
         // now we test for the truncated ground movement
         // just check if we are running or stationary, if so then test the truncate
@@ -405,7 +396,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             {
                 transform.parent = null;
             }
-            //transform.parent = null;
         }
 
         // only if not modified will this function move the player in that coordinate
@@ -415,6 +405,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (isGrounded)
         {
             allowedToEdgeGrab = true;
+            allowedToGrabPole = true;
         }
         // do not combine these
         if (allowedToEdgeGrab)
@@ -422,39 +413,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             EdgeCollision();
         }
 
-        //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 0.6f, Color.red);
-        //Debug.DrawRay(transform.position + transform.forward * 1f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), transform.up * maxFallVelocity, Color.blue);
 
-
-
-        /*
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 10, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle1, 0), transform.forward * 10, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle2, 0), transform.forward * 10, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle3, 0), transform.forward * 10, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0), transform.forward * 10, Color.red);
-        */
-        /*
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), transform.forward * transX, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.forward * (horizontalRaycastOffset - forwardThickness), -transform.forward * transX, Color.blue);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.right * (horizontalRaycastOffset - forwardThickness), transform.right * transX, Color.green);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.right * (horizontalRaycastOffset - forwardThickness), -transform.right * transX, Color.yellow);
-        */
-        /*
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle1, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle2, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightMiddle3, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ * transXM, Color.red);
-        */
-
-
-
-
-
-
-
-
+        //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 10, Color.red);
     }
 
     bool WallCollsion(RaycastHit hit)
@@ -470,7 +430,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
             }
             currentSpeed = 0.0f;
-            touchingWall = true;
+            //touchingWall = true;
         }
         else
         {
@@ -482,7 +442,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     bool FloorCollision(RaycastHit hit, bool truncate, ref Vector3 xz, ref bool xzModified)
     {
         bool yModified = false;
-        if (hit.normal.y >= slipperyFloorLowerLimitNormalY /*0.5f*/)
+        if (hit.normal.y >= slipperyFloorLowerLimitNormalY)
         {
             // we have found a floor below we must truncate to it
             float translator = hit.point.y + downwardThickness;
@@ -543,8 +503,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 }
                 */
             }
-
-            if (hit.normal.y >= 0.5f && hit.normal.y < slipperyFloorUpperLimitNormalY)
+            
+            if (hit.normal.y < slipperyFloorUpperLimitNormalY)
             {
                 // slippery slope
             }
@@ -713,14 +673,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
             // determine the speed at which to move the player
             float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
-            /*
-            if (touchingWall)
-            {
-                Debug.Log("touching" + currentSpeed);
-                targetSpeed = 0;
-                touchingWall = false;
-            }
-            */
+            
             currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, runningSpeedSmoothTime);
             universalMovementVector = transform.forward * currentSpeed;
 
@@ -817,6 +770,12 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void LowJumpingState()
     {
+        // we are using this as we enter the low jump from a pole
+        if (poleLeaveTimer > 0)
+        {
+            poleLeaveTimer--;
+        }
+
         if (input.magnitude > 0)
         {
             float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
@@ -932,7 +891,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // left and right no longer factor in the camera they move in respect to the edge
         // must check if more edge is avaialable to move over to
         //Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up, out moveRight, 0.2f, layerMask);
-        Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up * 0.2f, Color.red);
+        //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up * 0.2f, Color.red);
 
         if (hangStateTimer <= 0)
         {
@@ -949,7 +908,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     RaycastHit allowedToClimb;
                     if (!Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.5f, 0), transform.forward, out allowedToClimb, 2.0f, layerMask))
                     {
-                        Debug.Log("okay");
                         characterState = CharacterState.EDGE_GRAB_CLIMB;
                         float TX = transform.forward.x * (0.65f + 1.0f);
                         float TZ = transform.forward.z * (0.65f + 1.0f);
@@ -1013,26 +971,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void SwimmingState()
     {
-        // the swimming state works with reduced gravity and speed we do not need to be grounded to move
-        // and jump is now a stroke forward, works like a weak long jump with a decay
-        // we should be able to do the stroke even if not grounded, but being grounded lets us walk
-        // which is slightly faster than coasting
-        // we also need a stroke timer when we stroke we wait until a time limit (with animations) and
-        // then we can stroke again
-        /*
-        public float swimmingCoastSpeed = 0.1f; just press forward
-        public float swimmingCoastGroundedSpeed = 0.15f;
-
-        public Vector2 swimmingStrokeInitialSpeed = new Vector2(0.15f, 0.1f); forward and E
-        public float swimmingGravityIncrement = -0.01f;
-        public float swimmingMaxFallSpeed = -0.1f;
-        
-        public float swimmingJumpSpeed = 0.1f; jump
-
-        public float swimmingTurnSmoothTime = 3.0f;
-        public float swimmingSpeedSmoothTime = 3.0f;
-        */
-        //Debug.Log("now is " + currentSpeed);
         if (input != Vector2.zero)
         {
             // all this is to rotate the character in the desired running direction
@@ -1044,18 +982,11 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         float targetSpeed = ((isGrounded) ? swimmingCoastGroundedSpeed : swimmingCoastSpeed) * input.magnitude;
 
         currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime);
-        Debug.Log("now is " + currentSpeed);
-        if (isGrounded)
-        {
-            universalMovementVector.x = transform.forward.x * targetSpeed;
-            universalMovementVector.z = transform.forward.z * targetSpeed;
-        }
-        else
-        {
-            universalMovementVector.x = transform.forward.x * currentSpeed;
-            universalMovementVector.z = transform.forward.z * currentSpeed;
-        }
-        //Debug.Log(isGrounded);
+        
+        universalMovementVector.x = transform.forward.x * currentSpeed;
+        universalMovementVector.z = transform.forward.z * currentSpeed;
+        
+
         if (!isGrounded)
         {
             universalMovementVector.y += swimmingGravityIncrement;
@@ -1071,7 +1002,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (jump > 0)
         {
             // player wants to scroke upwards
-            //Debug.Log("errordskjgbsfhsdfsf");
             SwimmingStrokeUpward();
         }
         else if (Input.GetKey(KeyCode.E))
@@ -1109,25 +1039,116 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
         anim.SetFloat("speed", animMoveSpeed);
     }
+
+    void PoleGrabbingState()
+    {
+        // in this state we can move up and down and rotate about the center point with the 
+        // thickness of the pole included, also be able to jump. thus thick or thin poles can be treated
+        // must check if more pole allowed and make sure all poles are not touching any walls
+        // also allow the character to let go of the pole by becoming grounded
+        // treat collision like water, let the pole trigger the state
+
+        // the player also need to be able to just let go of the pole in the air
+        // thus we need a bool to say no more pole grabbing until grounded
+        // also a timer to allow the player to exit the pole trigger from the jump
+        // if no more pole can be dropped down to then check for truncation (current truncation only works if stationary or running)
+        // and let go of pole, else then just let go
     
+        // use the same set up for long jump when jumping off pole and use the long jump state
+        if (input != Vector2.zero)
+        {
+            // input being made
+            if (inputRaw.y >= 0.5f)
+            {
+                // climb up
+                // must check if more pole is available
+                RaycastHit allowedToClimb;
+                if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + poleClimbRate, 0) - transform.forward * 0.5f, transform.forward, out allowedToClimb, 0.7f))
+                {
+                    if(allowedToClimb.transform.tag == "pole")
+                    {
+                        // there is more pole to climb
+                        transform.Translate(new Vector3(0, poleClimbRate, 0));
+                    }
+                }
+                else
+                {
+                    // no more pole to climb
+                } 
+            }
+            else if (inputRaw.y <= -0.5f)
+            {
+                // climb down
+                // first check if more pole is available
+                RaycastHit allowedToSlide;
+                if (Physics.Raycast(transform.position + new Vector3(0, poleDescendRate, 0) - transform.forward * 0.5f, transform.forward, out allowedToSlide, 0.7f))
+                {
+                    if (allowedToSlide.transform.tag == "pole")
+                    {
+                        // there is more pole to slide
+                        transform.Translate(new Vector3(0, poleDescendRate, 0));
+                    }
+                }
+                else
+                {
+                    // there is no more pole to slide down check for ground
+                    // if ground then truncate and let go, else just let go
+                    RaycastHit ground;
+                    if (Physics.Raycast(transform.position - transform.forward * 0.5f, -transform.up, out ground, -poleDescendRate, layerMask))
+                    {
+                        // ground detected
+                        transform.position = new Vector3(transform.position.x, ground.point.y, transform.position.z);
+                        characterState = CharacterState.STATIONARY;
+                    }
+                    else
+                    {
+                        // just let go
+                        allowedToGrabPole = false;
+                        characterState = CharacterState.FALLING;
+                    }
+                }
+            }
+
+            if (inputRaw.x >= 0.5f)
+            {
+                // rotate about the pole counterclockwise from the top
+                transform.RotateAround(transform.position, new Vector3(0, 1, 0), -poleRotateSpeed);
+            }
+            else if(inputRaw.x <= -0.5f)
+            {
+                // rotate about the pole clockwise from the top
+                transform.RotateAround(transform.position, new Vector3(0, 1, 0), poleRotateSpeed);
+            }
+        }
+
+        if(jump > 0)
+        {
+            // player wants to jump
+            // rotate the player 180 then we jump off using the same code as a long jump
+            transform.RotateAround(transform.position, new Vector3(0, 1, 0), 180f);
+            universalMovementVector = transform.forward * poleInitialJumpVelocity.x + new Vector3(0, poleInitialJumpVelocity.y, 0);
+            characterState = CharacterState.JUMPING_LOW;
+            currentSpeed = initialLongJumpVelocity.x;
+            poleLeaveTimer = PoleLeaveTime;
+        }
+        else if(specialJump > 0)
+        {
+            // just let go of pole
+            characterState = CharacterState.FALLING;
+            allowedToGrabPole = false;
+        }
+        // separately we now check for jump
+    }
+
+
     void SwimmingStrokeUpward()
     {
-        // this just sets up the initial speed upward its not a state
         universalMovementVector.y = swimmingStrokeUpwardInitialSpeed;
     }
     
     void SwimmingStrokeForward()
     {
-        // this just sets up the initial speed forward its not a state
-        //universalMovementVector.x = transform.forward.x * swimmingStrokeForwardInitialSpeed.x;
-        //universalMovementVector.z = transform.forward.z * swimmingStrokeForwardInitialSpeed.x;
         currentSpeed = swimmingStrokeForwardInitialSpeed.x;
-        Debug.Log("set to " + currentSpeed);
-        Debug.Log("set to " + currentSpeed);
-        Debug.Log("set to " + currentSpeed);
-        Debug.Log("set to " + currentSpeed);
-        Debug.Log("set to " + currentSpeed);
-        Debug.Log("set to " + currentSpeed);
         universalMovementVector.y = swimmingStrokeForwardInitialSpeed.y;
     }
 
@@ -1172,7 +1193,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         SWIMMING_STROKE_UP,
         SWIMMING_STROKE_FORWARD,
         EDGE_GRAB_HANG,
-        EDGE_GRAB_CLIMB
+        EDGE_GRAB_CLIMB,
+        POLE_GRABBING
         // a function is called to set this value and must clean up a few values before forcing a no input senario
 
     }
@@ -1181,6 +1203,22 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     {
         // this function is called when we need to deactivate inputs,
         // must clean up a few things before setting the state to no inputs
+    }
+
+    public void PoleDetected(Vector3 polePosition, float poleThickness)
+    {
+        // pole thickness used if we want thick poles (logs) to climb up
+        // we are only concerned with the pole x and z
+        // the player can only enter the pole climb state if we are not grounded, but we do not care about the y direction
+        // we cancel the universal vector and set the player to the pole with the original y we had before trigger
+        if (characterState != CharacterState.POLE_GRABBING && allowedToGrabPole && !isGrounded && poleLeaveTimer <= 0) {
+            // we are not yet grabbing the pole and allowed to
+            characterState = CharacterState.POLE_GRABBING;
+            transform.position = new Vector3(polePosition.x, transform.position.y, polePosition.z);
+            universalMovementVector = Vector3.zero;
+            currentSpeed = 0;
+            // have the mesh moved back in animation to account for the pole occupying the player's x and z
+        }
     }
 
     public void SwitchIntoSwimState(float height)
@@ -1198,7 +1236,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     {
         if (characterState == CharacterState.SWIMMING || characterState == CharacterState.SWIMMING_STROKE_FORWARD || characterState == CharacterState.SWIMMING_STROKE_UP)
         {
-            //Debug.Log("player is not swimming");
             characterState = CharacterState.RUNNING;
         }
     }
