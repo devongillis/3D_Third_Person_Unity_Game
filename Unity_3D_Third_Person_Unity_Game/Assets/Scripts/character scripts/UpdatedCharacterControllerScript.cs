@@ -4,6 +4,8 @@ using UnityEngine;
 
 public class UpdatedCharacterControllerScript : MonoBehaviour
 {
+    public characterStats playerStats;
+
     public float maximumPlayerHorizontalVelocity;
 
     public float verticalRaycastOffset;
@@ -65,13 +67,13 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     // Bit shift the index of the layer (8) to get a bit mask
     public int layerMask = ~(1 << 8);
     // This would cast rays only against colliders in layer 8.
-
+    
     private Animator anim;
-    public float animMoveSpeed = 0.0f;
-    public float animDeltaSpeed = 0.01f;
-    public float animIdleSpeed = 0.0f;
-    public float animWalkSpeed = 0.6f;
-    public float animRunSpeed = 1.0f;
+    //public float animMoveSpeed = 0.0f;
+    //public float animDeltaSpeed = 0.01f;
+    //public float animIdleSpeed = 0.0f;
+    //public float animWalkSpeed = 0.6f;
+    //public float animRunSpeed = 1.0f;
 
     public CharacterState characterState = CharacterState.STATIONARY;
 
@@ -85,11 +87,13 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public Vector2 swimmingStrokeForwardInitialSpeed = new Vector2(0.15f, 0.1f);
     public float swimmingStrokeUpwardInitialSpeed = 0.20f;
     public float swimmingGravityIncrement = -0.01f;
+    public float swimmingGravitySinkIncrement = -0.05f;
     public float swimmingMaxFallSpeed = -0.1f;
     public float swimmingJumpSpeed = 0.1f;
     public float swimmingTurnSmoothTime = 1.0f;
     public float swimmingSpeedSmoothTime = 3.0f;
     public float swimBodyHeight; // the top of the swimming medium in world quardinates
+    public float swimSpeedDecay = 0.97f;
 
     // the current gravity value is contained in the universal vector, gravity increment is added to its y component
     public float gravityIncrement = -0.01f; // this is the amount each frame the gravity value changes
@@ -165,7 +169,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         layerMask = ~layerMask;
         cameraT = Camera.main.transform;
 
-
+        playerStats = this.transform.GetComponent<characterStats>();
 
 
         regularFloorStartArc = regularFloorStart * arcRatio;
@@ -211,7 +215,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // the raycasts start at these offsets but must also extend beyond by the amount the player can move
 
         anim = gameObject.GetComponentInChildren<Animator>();
-        anim.SetFloat("speed", animIdleSpeed);
+        anim.SetTrigger("StationaryState");
+        anim.SetFloat("speed", 0.0f);
     }
 
     // Update is called once per frame
@@ -379,6 +384,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (characterState == CharacterState.SLIPPING_NO_CONTROL)
         {
             characterState = CharacterState.STATIONARY;
+            anim.SetTrigger("StationaryState");
         }
         // we are not moving up (but what if we are slightly moving up and moving forward really fast then we might clip into floor horizontally
         float transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.1f; // 0.1f check for bigger slope values
@@ -482,12 +488,13 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
             // now we need to move the character back by a value proportional to the slope
             // we haven't applied the universal vector yet so we need to limit its values
-            if (!truncate)
+            if (!truncate && characterState != CharacterState.SWIMMING)
             {
                 if (hit.normal.y < slipperyFloorUpperLimitNormalY) // 0.5
                 {
                     // slippery slope
                     characterState = CharacterState.SLIPPING_NO_CONTROL;
+                    anim.SetTrigger("SlippingNoControl");
                     transform.Translate(new Vector3(hit.normal.x * slipSpeed, 0, hit.normal.z * slipSpeed));
                     xzModified = true;
                     
@@ -542,46 +549,50 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     {
         if (universalMovementVector.y <= 0 && !isGrounded)
         {
-            // we are falling, edge grabbing is allowed
-            RaycastHit hitEdgeForward;
-            RaycastHit hitEdgeDownward;
-
-            if (Physics.Raycast(transform.position + transform.forward * 1f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), -transform.up, out hitEdgeDownward, -maxFallVelocity, layerMask))
+            if (input.y > 0.5f)
             {
-                if (hitEdgeDownward.normal.y >= 1 - 0.09f)
-                {
-                    if (hitEdgeDownward.transform.tag != "notEdge")
-                    {
-                        if (Physics.Raycast(new Vector3(transform.position.x, hitEdgeDownward.point.y - 0.1f, transform.position.z), transform.forward, out hitEdgeForward, 0.6f, layerMask))
-                        {
+                // we are falling and trying to move forward, edge grabbing is allowed
+                RaycastHit hitEdgeForward;
+                RaycastHit hitEdgeDownward;
 
-                            // we struck a wall that meets the first definition of an edge
-                            if (hitEdgeForward.normal.y >= -0.09f && hitEdgeForward.normal.y <= 0.09f)
+                if (Physics.Raycast(transform.position + transform.forward * 1f + new Vector3(0, forwardHeightTop - maxFallVelocity, 0), -transform.up, out hitEdgeDownward, -maxFallVelocity, layerMask))
+                {
+                    if (hitEdgeDownward.normal.y >= 1 - 0.09f)
+                    {
+                        if (hitEdgeDownward.transform.tag != "notEdge")
+                        {
+                            if (Physics.Raycast(new Vector3(transform.position.x, hitEdgeDownward.point.y - 0.1f, transform.position.z), transform.forward, out hitEdgeForward, 0.6f, layerMask))
                             {
 
-                                // we struck an edge and a wall that works
-                                Debug.Log("edge found");
-                                characterState = CharacterState.EDGE_GRAB_HANG;
-                                universalMovementVector = Vector3.zero;
-                                float distanceBack = 0.65f;
-                                float posYOffset = 0.0f;
-                                // need to truncate the player to the wall in a defined space to fit the animation
-                                float posX = hitEdgeForward.point.x + hitEdgeForward.normal.x * distanceBack;
-                                float posZ = hitEdgeForward.point.z + hitEdgeForward.normal.z * distanceBack;
-                                float posY = hitEdgeDownward.point.y - forwardHeightTop + posYOffset;
-                                transform.position = new Vector3(posX, posY, posZ);
-                                anim.SetFloat("speed", 0);
-                                hangStateTimer = hangStateTime;
-                                allowedToEdgeGrab = false;
-                                transform.forward = new Vector3(-hitEdgeForward.normal.x, 0, -hitEdgeForward.normal.z);
-                                if (hitEdgeDownward.transform.tag == "rotatingPlatform" || hitEdgeDownward.transform.tag == "movingPlatform")
+                                // we struck a wall that meets the first definition of an edge
+                                if (hitEdgeForward.normal.y >= -0.09f && hitEdgeForward.normal.y <= 0.09f)
                                 {
-                                    transform.parent = hitEdgeDownward.transform;
+
+                                    // we struck an edge and a wall that works
+                                    //Debug.Log("edge found");
+                                    characterState = CharacterState.EDGE_GRAB_HANG;
+                                    anim.SetTrigger("EdgeGrabHang");
+                                    universalMovementVector = Vector3.zero;
+                                    float distanceBack = 0.65f;
+                                    float posYOffset = 0.0f;
+                                    // need to truncate the player to the wall in a defined space to fit the animation
+                                    float posX = hitEdgeForward.point.x + hitEdgeForward.normal.x * distanceBack;
+                                    float posZ = hitEdgeForward.point.z + hitEdgeForward.normal.z * distanceBack;
+                                    float posY = hitEdgeDownward.point.y - forwardHeightTop + posYOffset;
+                                    transform.position = new Vector3(posX, posY, posZ);
+                                    //anim.SetFloat("speed", 0);
+                                    hangStateTimer = hangStateTime;
+                                    allowedToEdgeGrab = false;
+                                    transform.forward = new Vector3(-hitEdgeForward.normal.x, 0, -hitEdgeForward.normal.z);
+                                    if (hitEdgeDownward.transform.tag == "rotatingPlatform" || hitEdgeDownward.transform.tag == "movingPlatform")
+                                    {
+                                        transform.parent = hitEdgeDownward.transform;
+                                    }
+                                    // now we need to create states for edge grabbing and where to put the character when climbing up
+                                    // also if player lets go of edge then the player needs to disable edge grab until grounded again
+                                    // in edge grab state we should be able to pull up or let go, maybe even shift to the side if more edge
+                                    // in that direction exists
                                 }
-                                // now we need to create states for edge grabbing and where to put the character when climbing up
-                                // also if player lets go of edge then the player needs to disable edge grab until grounded again
-                                // in edge grab state we should be able to pull up or let go, maybe even shift to the side if more edge
-                                // in that direction exists
                             }
                         }
                     }
@@ -600,6 +611,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // we are in the stationary state but the floor is not present, (got pushed off the edge?)
             // we swap the state and skip the input
             characterState = CharacterState.FALLING;
+            anim.SetTrigger("Falling");
         }
         else
         {
@@ -608,6 +620,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 // we have input for running
                 // must exit the stationary state
                 characterState = CharacterState.RUNNING;
+                anim.SetTrigger("RunningState");
                 // notice we can swap into and then out of running state if horizontal and jump
                 // input, this means the character will jump rather than start running from
                 // stationary pose, which means the character can't do a long jump from stationary
@@ -628,18 +641,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     RegularJump();
                 }
             }
-            // if no input was registered we remain in the stationary state, and animation will reflect that
-
-            if (animMoveSpeed <= animIdleSpeed)
-            {
-                animMoveSpeed = animIdleSpeed;
-            }
-            else
-            {
-                animMoveSpeed -= animDeltaSpeed;
-            }
-
-            anim.SetFloat("speed", animMoveSpeed);
+            anim.SetFloat("speed", 0.0f);
         }
     }
 
@@ -651,6 +653,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // we are in the running state but no ground is present, we swap the state
             // and skip the input
             characterState = CharacterState.FALLING;
+            anim.SetTrigger("Falling");
         }
         else
         {
@@ -665,6 +668,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             {
                 // no input so we move back to stationary
                 characterState = CharacterState.STATIONARY;
+                anim.SetTrigger("StationaryState");
             }
 
             // determine the speed at which to move the player
@@ -694,31 +698,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     RegularJump();
                 }
             }
-
-            if (running || Input.GetKey(KeyCode.E))
-            {
-                if (animMoveSpeed < animRunSpeed)
-                {
-                    animMoveSpeed += animDeltaSpeed * 5;
-                }
-                else
-                {
-                    animMoveSpeed -= animDeltaSpeed * 5;
-                }
-                anim.SetFloat("speed", animMoveSpeed);
-            }
-            else
-            {
-                if (animMoveSpeed < animWalkSpeed)
-                {
-                    animMoveSpeed += animDeltaSpeed;
-                }
-                else
-                {
-                    animMoveSpeed -= animDeltaSpeed;
-                }
-                anim.SetFloat("speed", animWalkSpeed); // double check this i think it should be animmovespeed
-            }
+            anim.SetFloat("speed", currentSpeed / runSpeed);
         }
     }
 
@@ -732,6 +712,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (isGrounded)
         {
             characterState = CharacterState.RUNNING;
+            anim.SetTrigger("RunningState");
         }
     }
 
@@ -755,11 +736,13 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (universalMovementVector.y <= 0.0f)
         {
             characterState = CharacterState.FALLING;
+            anim.SetTrigger("Falling");
         }
 
         if (groundPound > 0)
         {
             characterState = CharacterState.GROUND_POUND;
+            anim.SetTrigger("GroundPound");
             universalMovementVector.y = 0;
         }
     }
@@ -791,11 +774,13 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (universalMovementVector.y <= 0.0f)
         {
             characterState = CharacterState.FALLING;
+            anim.SetTrigger("Falling");
         }
 
         if (groundPound > 0)
         {
             characterState = CharacterState.GROUND_POUND;
+            anim.SetTrigger("GroundPound");
             universalMovementVector.y = 0;
         }
     }
@@ -805,6 +790,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (isGrounded)
         {
             characterState = CharacterState.RUNNING; // see if stationary is more appropriate
+            anim.SetTrigger("RunningState");
         }
         else
         {
@@ -827,6 +813,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             if (groundPound > 0)
             {
                 characterState = CharacterState.GROUND_POUND;
+                anim.SetTrigger("GroundPound");
                 universalMovementVector.y = 0;
             }
         }
@@ -834,24 +821,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void SlippingState()
     {
-        // slipping state will put the character back and down the slope by the moveback vector
-        // it will not accept inputs and will set the state back to stationary, if still on slope,
-        // the collision function will send us back to slipping for a 0 net change
-        // we want all initial movement zeroed out so don't "add" to but rather "set" the universal vector
-        // to avoid issues with collider not allowing movement due to y component forcing character into mesh (maybe)
-        // apply the x and z first and then the y
-        // intially from another state the character moves and the OnControllerColliderHit function is called within after moving
-        // this should then determine a vector to move back and down by and set the state to slipping, on the first slipping call
-        // we move by the moveback vector and thus call the collision function again it will decide wether to swap the state
-        if (!isGrounded)
-        {
-            //characterState = CharacterState.FALLING;
-        }
-        //characterState = CharacterState.STATIONARY;
-        // the slope has been determined by the raycast and it will have saved it in a vector
-        // we move by this vector, might want to adjust speed by the angle of the slope (60 = 0 and 90 = max)
-        //universalMovementVector = slopeVector * slopeSlipSpeed;
-
+        // this is a dead state we have no input only letting the slope push us down with the raycasts
     }
 
     void GroundPoundState()
@@ -866,6 +836,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             if (isGrounded)
             {
                 characterState = CharacterState.STATIONARY;
+                anim.SetTrigger("StationaryState");
                 groundPoundTimer = 0;
             }
             else
@@ -905,6 +876,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     if (!Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.5f, 0), transform.forward, out allowedToClimb, 2.0f, layerMask))
                     {
                         characterState = CharacterState.EDGE_GRAB_CLIMB;
+                        anim.SetTrigger("EdgeGrabClimb");
+                        GameObject.Find("Main Camera").GetComponent<cameraController>().useSmooth(climbStateTime);
                         float TX = transform.forward.x * (0.65f + 1.0f);
                         float TZ = transform.forward.z * (0.65f + 1.0f);
                         float TY = forwardHeightTop - 0.01f;
@@ -943,6 +916,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 {
                     // let go
                     characterState = CharacterState.FALLING;
+                    anim.SetTrigger("Falling");
                 }
             }
         }
@@ -958,6 +932,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if(climbStateTimer <= 0)
         {
             characterState = CharacterState.STATIONARY;
+            anim.SetTrigger("StationaryState");
         }
         else
         {
@@ -976,8 +951,20 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
         // determine the speed at which to move the player
         float targetSpeed = ((isGrounded) ? swimmingCoastGroundedSpeed : swimmingCoastSpeed) * input.magnitude;
-
-        currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime);
+        if(currentSpeed > swimmingCoastSpeed)
+        {
+            // we should instead reduce the current speed if it greater than the swim speed
+            // proportional to how much bigger the speed is (bigger speed, faster we slow down simulating resistance)
+            currentSpeed *= swimSpeedDecay;
+        }
+        if (isGrounded)
+        {
+            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime / 6);
+        }
+        else
+        {
+            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, swimmingSpeedSmoothTime);
+        }
         
         universalMovementVector.x = transform.forward.x * currentSpeed;
         universalMovementVector.z = transform.forward.z * currentSpeed;
@@ -1005,35 +992,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // player wants to stroke forward
             SwimmingStrokeForward();
         }
-
-
-
-
-
-        if (input.y > 0)
+        else if (specialJump > 0)
         {
-            if (animMoveSpeed < animWalkSpeed)
-            {
-                animMoveSpeed += animDeltaSpeed;
-            }
-            else
-            {
-                animMoveSpeed -= animDeltaSpeed;
-            }
+            universalMovementVector.y += swimmingGravitySinkIncrement;
+        }
 
-        }
-        else
-        {
-            if (animMoveSpeed <= animIdleSpeed)
-            {
-                animMoveSpeed = animIdleSpeed;
-            }
-            else
-            {
-                animMoveSpeed -= animDeltaSpeed;
-            }
-        }
-        anim.SetFloat("speed", animMoveSpeed);
+
+
+
+        
+        anim.SetFloat("speed", currentSpeed/runSpeed);
     }
 
     void PoleGrabbingState()
@@ -1095,12 +1063,14 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                         // ground detected
                         transform.position = new Vector3(transform.position.x, ground.point.y, transform.position.z);
                         characterState = CharacterState.STATIONARY;
+                        anim.SetTrigger("StationaryState");
                     }
                     else
                     {
                         // just let go
                         allowedToGrabPole = false;
                         characterState = CharacterState.FALLING;
+                        anim.SetTrigger("Falling");
                     }
                 }
             }
@@ -1124,6 +1094,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             transform.RotateAround(transform.position, new Vector3(0, 1, 0), 180f);
             universalMovementVector = transform.forward * poleInitialJumpVelocity.x + new Vector3(0, poleInitialJumpVelocity.y, 0);
             characterState = CharacterState.JUMPING_LOW;
+            anim.SetTrigger("JumpingLow");
             currentSpeed = initialLongJumpVelocity.x;
             poleLeaveTimer = PoleLeaveTime;
         }
@@ -1131,6 +1102,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             // just let go of pole
             characterState = CharacterState.FALLING;
+            anim.SetTrigger("Falling");
             allowedToGrabPole = false;
         }
         // separately we now check for jump
@@ -1140,18 +1112,27 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     void SwimmingStrokeUpward()
     {
         universalMovementVector.y = swimmingStrokeUpwardInitialSpeed;
+        anim.SetTrigger("SwimmingStrokeUpward");
     }
     
     void SwimmingStrokeForward()
     {
         currentSpeed = swimmingStrokeForwardInitialSpeed.x;
+        //universalMovementVector.x = transform.forward.x * swimmingStrokeForwardInitialSpeed.x;
+        //universalMovementVector.z = transform.forward.z * swimmingStrokeForwardInitialSpeed.x;
         universalMovementVector.y = swimmingStrokeForwardInitialSpeed.y;
+        if (isGrounded)
+        {
+            universalMovementVector.y += 0.04f;
+        }
+        anim.SetTrigger("SwimmingStrokeForward");
     }
 
     void LongJump()
     {
         universalMovementVector = transform.forward * initialLongJumpVelocity.x + new Vector3(0, initialLongJumpVelocity.y, 0);
         characterState = CharacterState.JUMPING_LONG;
+        anim.SetTrigger("JumpingLong");
         currentSpeed = initialLongJumpVelocity.x;
     }
 
@@ -1160,6 +1141,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // keep the x and z as we want to continue to move (but they might be zero anyway since our character has to be stationary)
         universalMovementVector.y = initialHighJumpVelocity;
         characterState = CharacterState.JUMPING_HIGH;
+        anim.SetTrigger("JumpingHigh");
     }
 
     void RegularJump()
@@ -1167,6 +1149,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // keep the x and z as we want to continue to move
         universalMovementVector.y = initialJumpVelocity;
         characterState = CharacterState.JUMPING_LOW;
+        anim.SetTrigger("JumpingLow");
     }
 
     public enum CharacterState
@@ -1186,8 +1169,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         SLIPPING_NO_CONTROL,
         GROUND_POUND,
         SWIMMING,
-        SWIMMING_STROKE_UP,
-        SWIMMING_STROKE_FORWARD,
+        //SWIMMING_STROKE_UP,
+        //SWIMMING_STROKE_FORWARD,
         EDGE_GRAB_HANG,
         EDGE_GRAB_CLIMB,
         POLE_GRABBING
@@ -1210,6 +1193,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (characterState != CharacterState.POLE_GRABBING && allowedToGrabPole && !isGrounded && poleLeaveTimer <= 0) {
             // we are not yet grabbing the pole and allowed to
             characterState = CharacterState.POLE_GRABBING;
+            anim.SetTrigger("PoleGrabbing");
             transform.position = new Vector3(polePosition.x, transform.position.y, polePosition.z);
             universalMovementVector = Vector3.zero;
             currentSpeed = 0;
@@ -1219,20 +1203,34 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     public void SwitchIntoSwimState(float height)
     {
-        if (characterState != CharacterState.SWIMMING && characterState != CharacterState.SWIMMING_STROKE_FORWARD && characterState != CharacterState.SWIMMING_STROKE_UP)
+        if (characterState != CharacterState.SWIMMING /*&& characterState != CharacterState.SWIMMING_STROKE_FORWARD && characterState != CharacterState.SWIMMING_STROKE_UP*/)
         {
             swimBodyHeight = height;
-            Debug.Log("player is swimming");
             characterState = CharacterState.SWIMMING;
-            currentSpeed = 0;
+            anim.SetTrigger("Swimming");
+            //currentSpeed = 0;
+            // we should instead reduce the current speed if it greater than the swim speed
+            // proportional to how much bigger the speed is (bigger speed, faster we slow down simulating resistance)
         }
     }
 
     public void SwitchOutOfSwimState()
     {
-        if (characterState == CharacterState.SWIMMING || characterState == CharacterState.SWIMMING_STROKE_FORWARD || characterState == CharacterState.SWIMMING_STROKE_UP)
+        if (characterState == CharacterState.SWIMMING /*|| characterState == CharacterState.SWIMMING_STROKE_FORWARD || characterState == CharacterState.SWIMMING_STROKE_UP*/)
         {
             characterState = CharacterState.RUNNING;
+            anim.SetTrigger("RunningState");
+        }
+    }
+
+    public void InjureCharacter(int damage)
+    {
+        // this function is called upon triggering an event that harms the player
+        if (playerStats.UpdatePlayerHealth_IsDead(damage))
+        {
+            // player is dead call for a scene transition to exit back to a default scene
+            Debug.Log("player is Dead");
+            InputAccepted = false;
         }
     }
 

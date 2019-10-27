@@ -18,14 +18,16 @@ public class cameraController : MonoBehaviour {
 
 	public Vector3 offset = new Vector3(0, 0, 0);
 
-	public float rotationSmoothTime = .12f;
+	public float rotationSmoothTime = 0.12f;
+    public float translationSmoothTime = 0.12f;
 	Vector3 rotationSmoothVelocity;
+    Vector3 translationSmoothVelocity;
 	Vector3 currentRotation;
 
 	float yaw;
 	float pitch;
 
-
+    public int smoothCounter;
 
 	void Start() {
 		if (lockCursor) {
@@ -33,6 +35,14 @@ public class cameraController : MonoBehaviour {
 			Cursor.visible = false;
 		}
 	}
+
+    public void useSmooth(int time)
+    {
+        //Debug.Log("hello");
+        // time is how many frames we have to transition from our current position to the desired position
+        // since smooth time is a value in seconds for how long the camera takes we can
+        smoothCounter = time;
+    }
 
 	void LateUpdate () {
 
@@ -53,8 +63,17 @@ public class cameraController : MonoBehaviour {
 
 		currentRotation = Vector3.SmoothDamp (currentRotation, new Vector3 (pitch, yaw), ref rotationSmoothVelocity, rotationSmoothTime);
 		transform.eulerAngles = currentRotation;
-		transform.position = target.position + offset - transform.forward * dstFromTarget;
-	}
+		//transform.position = target.position + offset - transform.forward * dstFromTarget;
+        if(smoothCounter > 0)
+        {
+            transform.position = Vector3.SmoothDamp(transform.position, target.position + offset - transform.forward * dstFromTarget, ref translationSmoothVelocity, translationSmoothTime);
+            smoothCounter--;
+        }
+        else
+        {
+            transform.position = target.position + offset - transform.forward * dstFromTarget;
+        }
+    }
 
 	void KeyBoardInput(){
 		yaw += Input.GetAxis ("Mouse X") * yawSensitivity;

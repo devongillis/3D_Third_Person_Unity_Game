@@ -543,22 +543,26 @@ MonoBehaviour:
   downwardThickness: 0
   forwardThickness: 0.1
   regularFloorStart: 0
-  regularFloorSlipperyFloor: 45
+  regularFloorSemiSlipperyFloor: 30
+  SemiSlipperyFloorSlipperyFloor: 60
   SlipperyFloorWall: 80
   wallCeiling: 100
   ceiling: 180
   regularFloorStartArc: 0
-  regularFloorSlipperyFloorArc: 0
+  regularFloorSemiSlipperyFloorArc: 0
+  semiSlipperyFloorSlipperyFloorArc: 0
   SlipperyFloorWallArc: 0
   wallCeilingArc: 0
   ceilingArc: 0
   arcRatio: 0.017453292
-  wallUpperLimitNormalY: 0
-  wallLowerLimitNormalY: 0
   floorUpperLimitNormalY: 0
   floorLowerLimitNormalY: 0
+  semiSlipperyFloorUpperLimitNormalY: 0
+  semiSlipperyFloorLowerLimitNormalY: 0
   slipperyFloorUpperLimitNormalY: 0
   slipperyFloorLowerLimitNormalY: 0
+  wallUpperLimitNormalY: 0
+  wallLowerLimitNormalY: 0
   ceilingUpperLimitNormalY: 0
   slopeDownwardCheckDistance: 0
   layerMask: 256
@@ -570,6 +574,7 @@ MonoBehaviour:
   characterState: 0
   walkSpeed: 0.15
   runSpeed: 0.3
+  slipSpeed: 0.05
   swimmingCoastSpeed: 0.05
   swimmingCoastGroundedSpeed: 0.07
   swimmingStrokeForwardInitialSpeed: {x: 0.15, y: 0.1}
@@ -595,6 +600,18 @@ MonoBehaviour:
   InputAccepted: 1
   groundPoundTimer: 0
   groundPoundTimeLimit: 60
+  hangStateTimer: 0
+  hangStateTime: 60
+  allowedToEdgeGrab: 1
+  climbStateTimer: 0
+  climbStateTime: 60
+  poleLeaveTimer: 0
+  PoleLeaveTime: 5
+  allowedToGrabPole: 1
+  poleClimbRate: 0.1
+  poleDescendRate: -0.2
+  poleRotateSpeed: 2
+  poleInitialJumpVelocity: {x: 0.3, y: 0.3}
 --- !u!1 &2564072032087702268
 GameObject:
   m_ObjectHideFlags: 0
