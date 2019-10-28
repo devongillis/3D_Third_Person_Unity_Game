@@ -1,5 +1,5 @@
 fileFormatVersion: 2
-guid: 58dce101886325c49b5107fd03012a52
+guid: d3fb1f2a5eeace64691a4a4a27cb652a
 ModelImporter:
   serializedVersion: 26
   internalIDToNameTable:
@@ -11,17 +11,17 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: dirt
-    second: {fileID: 2100000, guid: fd46817b281371d4f8c16c40b823923c, type: 2}
+    second: {fileID: 2100000, guid: 7148bd5514d5d584aa66c18b7d047acf, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: grass
+      name: grass_bounds
     second: {fileID: 2100000, guid: fd846de22819236439b236257925a701, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
-      name: gravel
-    second: {fileID: 2100000, guid: d21b84f7b75ae4c469ea0e518094d1bc, type: 2}
+      name: grass_path
+    second: {fileID: 2100000, guid: 8bb82cc8bfe9d2d46b8685903b755f75, type: 2}
   - first:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
@@ -31,7 +31,7 @@ ModelImporter:
       type: UnityEngine:Material
       assembly: UnityEngine.CoreModule
       name: rock_wall
-    second: {fileID: 2100000, guid: d6667f48f408b344b9457b53dca323f2, type: 2}
+    second: {fileID: 2100000, guid: c6e5eda47d0e4fa4dbedbfbb3cf035c3, type: 2}
   materials:
     importMaterials: 1
     materialName: 0

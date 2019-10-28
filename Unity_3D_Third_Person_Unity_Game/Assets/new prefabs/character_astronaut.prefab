@@ -418,6 +418,7 @@ GameObject:
   - component: {fileID: 5045641763215510493}
   - component: {fileID: -8102763824890657188}
   - component: {fileID: 1582782752}
+  - component: {fileID: 1382799312}
   m_Layer: 0
   m_Name: character_astronaut
   m_TagString: Player
@@ -450,8 +451,8 @@ Animator:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1986570594344354682}
   m_Enabled: 1
-  m_Avatar: {fileID: 9000000, guid: 1bbd9766e4beeca48afa235b268d09c5, type: 3}
-  m_Controller: {fileID: 9100000, guid: a5c377b612b5b9c428ea39067453d0d1, type: 2}
+  m_Avatar: {fileID: 9000000, guid: f816815f87571034db77853d375d7f63, type: 3}
+  m_Controller: {fileID: 9100000, guid: 118a328f6fd66084baf13404ef5b7238, type: 2}
   m_CullingMode: 1
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -530,6 +531,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f02ad2d5c78418c45b713d973167b7c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerStats: {fileID: 0}
   maximumPlayerHorizontalVelocity: 0
   verticalRaycastOffset: 0
   horizontalRaycastOffset: 0
@@ -566,25 +568,24 @@ MonoBehaviour:
   ceilingUpperLimitNormalY: 0
   slopeDownwardCheckDistance: 0
   layerMask: 256
-  animMoveSpeed: 0
-  animDeltaSpeed: 0.01
-  animIdleSpeed: 0
-  animWalkSpeed: 0.6
-  animRunSpeed: 1
   characterState: 0
   walkSpeed: 0.15
   runSpeed: 0.3
   slipSpeed: 0.05
+  noFriction: 0
+  slipFactor: 100
   swimmingCoastSpeed: 0.05
   swimmingCoastGroundedSpeed: 0.07
-  swimmingStrokeForwardInitialSpeed: {x: 0.15, y: 0.1}
+  swimmingStrokeForwardInitialSpeed: {x: 0.15, y: 0.06}
   swimmingStrokeUpwardInitialSpeed: 0.2
-  swimmingGravityIncrement: -0.005
-  swimmingMaxFallSpeed: -0.05
+  swimmingGravityIncrement: -0.003
+  swimmingGravitySinkIncrement: -0.1
+  swimmingMaxFallSpeed: -0.03
   swimmingJumpSpeed: 0.1
   swimmingTurnSmoothTime: 1
   swimmingSpeedSmoothTime: 3
   swimBodyHeight: 0
+  swimSpeedDecay: 0.97
   gravityIncrement: -0.01
   maxFallVelocity: -1
   groundDistanceCheck: 0.1
@@ -601,10 +602,10 @@ MonoBehaviour:
   groundPoundTimer: 0
   groundPoundTimeLimit: 60
   hangStateTimer: 0
-  hangStateTime: 60
+  hangStateTime: 20
   allowedToEdgeGrab: 1
   climbStateTimer: 0
-  climbStateTime: 60
+  climbStateTime: 120
   poleLeaveTimer: 0
   PoleLeaveTime: 5
   allowedToGrabPole: 1
@@ -612,6 +613,22 @@ MonoBehaviour:
   poleDescendRate: -0.2
   poleRotateSpeed: 2
   poleInitialJumpVelocity: {x: 0.3, y: 0.3}
+--- !u!114 &1382799312
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1986570594344354682}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fc015518eadbea46849a2a7d515a2be, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  health: 0
+  maxHealth: 8
+  canvas: {fileID: 0}
+  healthBar: {fileID: 0}
 --- !u!1 &2564072032087702268
 GameObject:
   m_ObjectHideFlags: 0

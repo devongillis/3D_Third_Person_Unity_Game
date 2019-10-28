@@ -223,6 +223,48 @@ AnimatorStateTransition:
   m_InterruptionSource: 0
   m_OrderedInterruption: 1
   m_CanTransitionToSelf: 1
+--- !u!206 &-5512266922983828446
+BlendTree:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Blend Tree
+  m_Childs:
+  - serializedVersion: 2
+    m_Motion: {fileID: -5252816984213320552, guid: f816815f87571034db77853d375d7f63,
+      type: 3}
+    m_Threshold: 0
+    m_Position: {x: 0, y: 0}
+    m_TimeScale: 1
+    m_CycleOffset: 0
+    m_DirectBlendParameter: speed
+    m_Mirror: 0
+  - serializedVersion: 2
+    m_Motion: {fileID: -3991647067249255985, guid: f816815f87571034db77853d375d7f63,
+      type: 3}
+    m_Threshold: 0.5
+    m_Position: {x: 0, y: 0}
+    m_TimeScale: 1
+    m_CycleOffset: 0
+    m_DirectBlendParameter: speed
+    m_Mirror: 0
+  - serializedVersion: 2
+    m_Motion: {fileID: -5252816984213320552, guid: f816815f87571034db77853d375d7f63,
+      type: 3}
+    m_Threshold: 1
+    m_Position: {x: 0, y: 0}
+    m_TimeScale: 1
+    m_CycleOffset: 0
+    m_DirectBlendParameter: speed
+    m_Mirror: 0
+  m_BlendParameter: speed
+  m_BlendParameterY: speed
+  m_MinThreshold: 0
+  m_MaxThreshold: 1
+  m_UseAutomaticThresholds: 0
+  m_NormalizedBlendValues: 0
+  m_BlendType: 0
 --- !u!1101 &-5475205069783614359
 AnimatorStateTransition:
   m_ObjectHideFlags: 1
@@ -344,8 +386,7 @@ AnimatorState:
   m_MirrorParameterActive: 0
   m_CycleOffsetParameterActive: 0
   m_TimeParameterActive: 0
-  m_Motion: {fileID: -3991647067249255985, guid: f816815f87571034db77853d375d7f63,
-    type: 3}
+  m_Motion: {fileID: -5512266922983828446}
   m_Tag: 
   m_SpeedParameter: 
   m_MirrorParameter: 
@@ -614,10 +655,10 @@ AnimatorStateMachine:
     m_Position: {x: -100, y: -560, z: 0}
   - serializedVersion: 1
     m_State: {fileID: 1531077471556129841}
-    m_Position: {x: 300, y: -560, z: 0}
+    m_Position: {x: 300, y: -660, z: 0}
   - serializedVersion: 1
     m_State: {fileID: 7982677410323168023}
-    m_Position: {x: 300, y: -510, z: 0}
+    m_Position: {x: 300, y: -610, z: 0}
   m_ChildStateMachines: []
   m_AnyStateTransitions:
   - {fileID: -8222179133920030810}

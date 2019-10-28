@@ -69,17 +69,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     // This would cast rays only against colliders in layer 8.
     
     private Animator anim;
-    //public float animMoveSpeed = 0.0f;
-    //public float animDeltaSpeed = 0.01f;
-    //public float animIdleSpeed = 0.0f;
-    //public float animWalkSpeed = 0.6f;
-    //public float animRunSpeed = 1.0f;
 
     public CharacterState characterState = CharacterState.STATIONARY;
 
     public float walkSpeed = 0.15f;
     public float runSpeed = 0.3f;
     public float slipSpeed = 0.05f;
+
+    public bool noFriction = false; // if on a no friction floor then player slides across like ice
+    public float slipFactor = 100f;
+
 
     // swimming physics
     public float swimmingCoastSpeed = 0.05f;
@@ -124,9 +123,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     // input variables
     Vector2 input;
     Vector2 inputRaw;
+
     float jump;
     float specialJump;
     float groundPound;
+    // used to make sure button is applied when clicked and not when just held down
+    bool jumpEnable = false;
+    bool groundPoundEnable = false;
+
+
+
 
     // secondary input variables
     public bool running;
@@ -188,7 +194,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         floorUpperLimitNormalY = 1.0f; // floor is <= 1.0
         floorLowerLimitNormalY = Mathf.Sin((90 - regularFloorSemiSlipperyFloor) * arcRatio); // floor is >= 0.866
 
-
         semiSlipperyFloorUpperLimitNormalY = floorLowerLimitNormalY; // semi slippery is < 0.866f
         semiSlipperyFloorLowerLimitNormalY = Mathf.Sin((90 - SemiSlipperyFloorSlipperyFloor) * arcRatio); // semi slippery is >= 0.5f
 
@@ -232,6 +237,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // act like no inputs being made
             input = new Vector2(0, 0);
             inputRaw = new Vector2(0, 0);
+            
+            // buttons
             jump = 0;
             specialJump = 0;
             groundPound = 0;
@@ -242,9 +249,42 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             input = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             inputRaw = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
             input = input.normalized;
-            jump = Input.GetAxisRaw("Jump");
-            specialJump = Input.GetAxisRaw("Special Jump");
-            groundPound = Input.GetAxisRaw("Ground Pound");
+
+            specialJump = Input.GetAxisRaw("Special Jump"); // special jump is a pressed button not a clicked button
+
+
+
+
+            // buttons
+            if (Input.GetAxisRaw("Jump") == 0){
+                // we are currently not holding down the jump button
+                jumpEnable = true;
+            }
+            if (jumpEnable && Input.GetAxisRaw("Jump") > 0)
+            {
+                jump = Input.GetAxisRaw("Jump");
+                jumpEnable = false;
+            }
+            else
+            {
+                jump = 0;
+            }
+
+            if (Input.GetAxisRaw("Ground Pound") == 0)
+            {
+                // we are currently not holding down the ground pound button
+                groundPoundEnable = true;
+            }
+            if (groundPoundEnable && Input.GetAxisRaw("Ground Pound") > 0)
+            {
+                groundPound = Input.GetAxisRaw("Ground Pound");
+                groundPoundEnable = false;
+            }
+            else
+            {
+                groundPound = 0;
+            }
+
         }
         // inputs are collected
 
@@ -309,6 +349,9 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // the downward raycast must check for ground and a rotating body, if rotating body is found then
         // add it to the universalTranslationVector
         // also DO NOT USE DELTA TIME, only use motion as frame by frame Application.targetFrameRate = 30
+
+        //Debug.Log("before " + transform.position + " " + universalMovementVector);
+
 
         bool xzModified = false;
         bool yModified = false;
@@ -422,6 +465,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             }
         }
 
+        Debug.Log("before " + transform.position + " " + universalMovementVector + " " + xzModified);
+
         // only if not modified will this function move the player in that coordinate
         MoveCharacter(universalMovementVector + platformRotationVector, xzModified, yModified);
         platformRotationVector = Vector3.zero;
@@ -454,6 +499,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
             }
             currentSpeed = 0.0f;
+            universalMovementVector.x *= -1;
+            universalMovementVector.z *= -1;
             //touchingWall = true;
         }
         else
@@ -485,12 +532,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             {
                 transform.parent = hit.transform;
             }
+            else if (hit.transform.tag == "noFriction")
+            {
+                noFriction = true;
+            }
 
             // now we need to move the character back by a value proportional to the slope
             // we haven't applied the universal vector yet so we need to limit its values
             if (!truncate && characterState != CharacterState.SWIMMING)
             {
-                if (hit.normal.y < slipperyFloorUpperLimitNormalY) // 0.5
+                if (hit.normal.y <= slipperyFloorUpperLimitNormalY) // 0.5
                 {
                     // slippery slope
                     characterState = CharacterState.SLIPPING_NO_CONTROL;
@@ -572,6 +623,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                                     //Debug.Log("edge found");
                                     characterState = CharacterState.EDGE_GRAB_HANG;
                                     anim.SetTrigger("EdgeGrabHang");
+                                    anim.SetFloat("speed", 0.5f);
                                     universalMovementVector = Vector3.zero;
                                     float distanceBack = 0.65f;
                                     float posYOffset = 0.0f;
@@ -603,8 +655,15 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void StationaryState()
     {
-        universalMovementVector = Vector3.zero;
-        currentSpeed = 0.0f;
+        if (noFriction)
+        {
+            universalMovementVector = (universalMovementVector * slipFactor)/(slipFactor + 1);
+            noFriction = false;
+        }
+        else {
+            universalMovementVector = Vector3.zero;
+            currentSpeed = 0.0f;
+        }
 
         if (!isGrounded)
         {
@@ -675,7 +734,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
             
             currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, runningSpeedSmoothTime);
-            universalMovementVector = transform.forward * currentSpeed;
+            if (noFriction)
+            {
+                universalMovementVector = (universalMovementVector * slipFactor + transform.forward * currentSpeed) / (slipFactor + 1);
+                universalMovementVector.y = 0;
+                noFriction = false;
+            }
+            else
+            {
+                universalMovementVector = transform.forward * currentSpeed;
+            }
 
             if (jump > 0)
             {
@@ -1107,8 +1175,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
         // separately we now check for jump
     }
-
-
+    
     void SwimmingStrokeUpward()
     {
         universalMovementVector.y = swimmingStrokeUpwardInitialSpeed;
@@ -1169,8 +1236,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         SLIPPING_NO_CONTROL,
         GROUND_POUND,
         SWIMMING,
-        //SWIMMING_STROKE_UP,
-        //SWIMMING_STROKE_FORWARD,
         EDGE_GRAB_HANG,
         EDGE_GRAB_CLIMB,
         POLE_GRABBING

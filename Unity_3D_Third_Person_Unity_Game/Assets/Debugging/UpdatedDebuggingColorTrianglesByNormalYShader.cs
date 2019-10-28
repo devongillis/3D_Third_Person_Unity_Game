@@ -12,13 +12,15 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
 
     // all of these values are the angle of the normal from the vertical plane,clockwise
     public float regularFloorStart = 0;
-    public float regularFloorSlipperyFloor = 45; // anything below is normal, above is slippery
+    public float regularFloorSemiSlipperyFloor = 30; // anything below is normal, above is semi slippery
+    public float SemiSlipperyFloorSlipperyFloor = 60; // anything below is semi slippery, above is slippery
     public float SlipperyFloorWall = 80; // anything below is slippery, above is wall
     public float wallCeiling = 100; // anything below is wall, above is ceiling
     public float ceiling = 180;
 
     public float regularFloorStartArc;
-    public float regularFloorSlipperyFloorArc;
+    public float regularFloorSemiSlipperyFloorArc;
+    public float semiSlipperyFloorSlipperyFloorArc;
     public float SlipperyFloorWallArc;
     public float wallCeilingArc;
     public float ceilingArc;
@@ -26,18 +28,22 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
     public float arcRatio = (2 * Mathf.PI / 360);
 
 
+    // a regular floor is defined as any surface with normal.y between 0.866 and 1.0
+    public float floorUpperLimitNormalY;// = 1.0f; // <=
+    public float floorLowerLimitNormalY;// = 0.866f; // >=
+    // a semi slippery floor is defined as any surface with normal.y between 0.5 and 0.866
+    public float semiSlipperyFloorUpperLimitNormalY; // = 0.866f; // <
+    public float semiSlipperyFloorLowerLimitNormalY; // = 0.5f; // <
+    // a slippery floor is defined as any surface with normal.y between 0.174 and 0.5
+    public float slipperyFloorUpperLimitNormalY;// = 0.5f; // <
+    public float slipperyFloorLowerLimitNormalY;// = 0.174f; // >=
     // a wall is defined as any surface with normal.y between -0.174 and 0.174
     public float wallUpperLimitNormalY;// = 0.174f; // <=
     public float wallLowerLimitNormalY;// = -0.174f; // >=
-    // a regular floor is defined as any surface with normal.y between 0.707 and 1.0
-    public float floorUpperLimitNormalY;// = 1.0f; // <=
-    public float floorLowerLimitNormalY;// = 0.707f; // >=
-    // a slippery floor is defined as any surface with normal.y between 0.5 and 0.707
-    public float slipperyFloorUpperLimitNormalY;// = 0.707f; // <
-    public float slipperyFloorLowerLimitNormalY;// = 0.5f; // >=
-    // a ceiling is defined as any surface with normal.y between -1.0 and -0.5
-    public float ceilingUpperLimitNormalY;// = -0.5f; // <=
+    // a ceiling is defined as any surface with normal.y between -1.0 and -0.174
+    public float ceilingUpperLimitNormalY;// = -0.174; // <=
     // -1.0f is the minimum value for normal.y so we don't need to use this value for ceilings
+    
     // Start is called before the first frame update
     void Start()
     {
@@ -49,7 +55,8 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
 
 
         regularFloorStartArc = regularFloorStart * arcRatio;
-        regularFloorSlipperyFloorArc = regularFloorSlipperyFloor * arcRatio;
+        regularFloorSemiSlipperyFloorArc = regularFloorSemiSlipperyFloor * arcRatio;
+        semiSlipperyFloorSlipperyFloorArc = SemiSlipperyFloorSlipperyFloor * arcRatio;
         SlipperyFloorWallArc = SlipperyFloorWall * arcRatio;
         wallCeilingArc = wallCeiling * arcRatio;
         ceilingArc = ceiling * arcRatio;
@@ -61,12 +68,16 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
         // a ceiling is defined as any surface with normal.y between        -0.174  and -1.000
 
         floorUpperLimitNormalY = 1.0f; // floor is <= 1.0
-        floorLowerLimitNormalY = Mathf.Sin((90 - regularFloorSlipperyFloor) * arcRatio); // floor is >= 0.707
+        floorLowerLimitNormalY = Mathf.Sin((90 - regularFloorSemiSlipperyFloor) * arcRatio); // floor is >= 0.866
 
-        slipperyFloorUpperLimitNormalY = floorLowerLimitNormalY; // slippery is < 0.707
+
+        semiSlipperyFloorUpperLimitNormalY = floorLowerLimitNormalY; // semi slippery is < 0.866f
+        semiSlipperyFloorLowerLimitNormalY = Mathf.Sin((90 - SemiSlipperyFloorSlipperyFloor) * arcRatio); // semi slippery is >= 0.5f
+
+        slipperyFloorUpperLimitNormalY = semiSlipperyFloorLowerLimitNormalY; // slippery is < 0.5
         slipperyFloorLowerLimitNormalY = Mathf.Sin((90 - SlipperyFloorWall) * arcRatio); // slippery is > 0.174
 
-        wallUpperLimitNormalY = Mathf.Sin((90 - SlipperyFloorWall) * arcRatio); // wall is <= 0.174
+        wallUpperLimitNormalY = slipperyFloorLowerLimitNormalY; // wall is <= 0.174
         wallLowerLimitNormalY = -wallUpperLimitNormalY; // wall is >= -0.174
 
         ceilingUpperLimitNormalY = Mathf.Sin((90 - wallCeiling) * arcRatio); // ceiling is < -0.174
@@ -173,7 +184,13 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
             {
                 // regular floor
                 // light green
-                newColors[i] = new Color32(124, 252, 0, 255);
+                newColors[i] = new Color32(144, 238, 144, 255);
+            }
+            else if (normal.y < semiSlipperyFloorUpperLimitNormalY && normal.y >= semiSlipperyFloorLowerLimitNormalY)
+            {
+                // semi slippery floor
+                // green
+                newColors[i] = new Color32(0, 255, 0, 255);
             }
             else if (normal.y < slipperyFloorUpperLimitNormalY /*0.707f*/ && normal.y > slipperyFloorLowerLimitNormalY /*0.5f*/)
             {
@@ -183,25 +200,11 @@ public class UpdatedDebuggingColorTrianglesByNormalYShader : MonoBehaviour
             }
             else
             {
-                // bad triangular face
+                // bad triangular face, error
                 // red
                 newColors[i] = new Color32(255, 0, 0, 255);
             }
 
-            /*
-			if(normal.y < -0.09f){
-				newColors[i] = Color.red;
-			}
-			else if(normal.y < 0.09f){
-				newColors[i] = Color.blue;
-			}
-			else if(normal.y < 0.5f){
-				newColors[i] = Color.red;
-			}
-			else{
-				newColors[i] = Color.green;
-			}
-            */
         }
 
         mesh.colors32 = newColors;

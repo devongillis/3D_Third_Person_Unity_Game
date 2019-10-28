@@ -9,6 +9,7 @@ TagManager:
   - movingPlatform
   - notEdge
   - pole
+  - noFriction
   layers:
   - Default
   - TransparentFX
