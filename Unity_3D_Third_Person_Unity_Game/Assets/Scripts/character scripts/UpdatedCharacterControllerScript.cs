@@ -110,7 +110,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     float currentSpeed;
     //float wallTouchSpeed = 0.01f;
-    //bool touchingWall = false;
+    bool touchingWall = false;
 
 
     public float initialJumpVelocity = 0.35f;
@@ -250,6 +250,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
         // reset these variables for each update
+        touchingWall = false;
         xzModified = false;
         yModified = false;
         XZ = new Vector3(universalMovementVector.x, 0, universalMovementVector.z);
@@ -550,6 +551,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             currentSpeed = 0.0f;
             universalMovementVector.x *= -1;
             universalMovementVector.z *= -1;
+            touchingWall = true;
         }
         else
         {
@@ -656,7 +658,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
         if (universalMovementVector.y <= 0 && !isGrounded)
         {
-            if (input.y > 0.5f)
+            if (input.magnitude > 0.5f)
             {
                 // we are falling and trying to move forward, edge grabbing is allowed
                 RaycastHit hitEdgeForward;
@@ -809,7 +811,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 // now determine what kind of jump
                 if (specialJump > 0)
                 {
-                    if (running || Input.GetKey(KeyCode.E))
+                    if ((running || Input.GetKey(KeyCode.E)) && !touchingWall)
                     {
                         // since we are in the running state we will do a high jump
                         LongJump();

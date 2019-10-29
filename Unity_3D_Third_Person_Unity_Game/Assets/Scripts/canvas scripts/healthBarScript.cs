@@ -6,11 +6,13 @@ public class healthBarScript : MonoBehaviour
 {
     
 	public Sprite[] spriteList;
+    public UnityEngine.UI.Image spriteRenderer;
 
     // Start is called before the first frame update
     void Start()
     {
-		this.gameObject.GetComponent<UnityEngine.UI.Image>().sprite = spriteList[0];
+        spriteRenderer = gameObject.GetComponent<UnityEngine.UI.Image>();
+        spriteRenderer.sprite = spriteList[0];
     }
 
     // Update is called once per frame
@@ -20,7 +22,7 @@ public class healthBarScript : MonoBehaviour
     }
 
 	public void UpdateHealth(int health){
-		this.gameObject.GetComponent<UnityEngine.UI.Image>().sprite = spriteList[8 - health];
+        spriteRenderer.sprite = spriteList[8 - health];
 	}
     
 
