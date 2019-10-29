@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8396387609276229969}
   - component: {fileID: 8396387609276229996}
   - component: {fileID: 8396387609276229968}
+  - component: {fileID: 8296172668063985635}
   m_Layer: 0
   m_Name: diamond_6
   m_TagString: Untagged
@@ -124,3 +125,16 @@ MonoBehaviour:
   localRotationSpeed: 1
   world: {x: 0, y: 1, z: 0}
   local: {x: 0, y: 0, z: 0}
+--- !u!114 &8296172668063985635
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 550594866286276944}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c126b11e31011ba41b5e485ba15c1cc0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  offset: {x: 0, y: 0, z: 0}

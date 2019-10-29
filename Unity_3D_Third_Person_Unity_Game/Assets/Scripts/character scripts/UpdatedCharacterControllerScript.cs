@@ -9,6 +9,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public float maximumPlayerHorizontalVelocity;
 
     public float verticalRaycastOffset;
+    public float verticalCeilingRaycastOffset;
     public float horizontalRaycastOffset;
 
     Transform cameraT;
@@ -20,6 +21,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public float forwardHeightMiddle3 = 1.56f;
     public float forwardHeightBottom = 0.75f;
     public float downwardThickness = 0.0f; // the difference between the ground and the position of the character
+    public float upwardThickness = 4.0f;
     public float forwardThickness = 0.5f; // this need to be half the diameter of the total player, keep above 1.0
 
 
@@ -127,10 +129,12 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     float jump;
     float specialJump;
     float groundPound;
+    float speedUp;
+    float strokeForward;
     // used to make sure button is applied when clicked and not when just held down
     bool jumpEnable = false;
     bool groundPoundEnable = false;
-
+    bool strokeForwardEnable = false;
 
 
 
@@ -167,6 +171,11 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public float poleRotateSpeed = 1f;
     public Vector2 poleInitialJumpVelocity = new Vector2(0.3f, 0.3f);
 
+    public int injuryKnockbackTimer = 0;
+    public int injuryKnockbackTime = 60;
+    public float explosionKnockBackVelocity = 0.4f; // keep this below the high jump velocity
+    public float explosionKnockBackDecay = 0.97f;
+
 
     // these values are reset every update call
     bool xzModified = false;
@@ -176,6 +185,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     float transX;
     float transXM;
     float transY;
+    float transYUp;
 
     // Start is called before the first frame update
     void Start()
@@ -227,6 +237,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
         horizontalRaycastOffset = -maxFallVelocity * Mathf.Tan((90 - SlipperyFloorWall) * arcRatio) + 0.3f; // should add a little extra like 0.01f
         verticalRaycastOffset = maximumPlayerHorizontalVelocity * Mathf.Tan(SlipperyFloorWall * arcRatio) + 0.0f; // should add a little extra like 0.01f
+        verticalCeilingRaycastOffset = maximumPlayerHorizontalVelocity * Mathf.Tan((180 - wallCeiling) * arcRatio) + 0.0f; // should add a little extra like 0.01f
+
         // the raycasts start at these offsets but must also extend beyond by the amount the player can move
 
         anim = gameObject.GetComponentInChildren<Animator>();
@@ -259,13 +271,15 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         transX = forwardThickness + (horizontalRaycastOffset - forwardThickness) + 0.01f;
         transXM = XZ.magnitude + transX;
         transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.1f; // 0.1f check for bigger slope values
+        transYUp = verticalCeilingRaycastOffset + Y.y + 0.01f; // 0.1f check for bigger slope values
 
 
         ExecuteNoDirectionRaycasts();
         
         ExecuteMovementForwardRaycasts();
-        
+
         // around here we do the ceiling raycasts
+        ExecuteMovementUpwardRaycasts();
         
         ExecuteMovementDownwardRaycasts();
         
@@ -297,6 +311,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void CollectAndConfigureInputs()
     {
+        // Speed Up and Stroke Forward
+
         if (!InputAccepted)
         {
             // act like no inputs being made
@@ -307,6 +323,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             jump = 0;
             specialJump = 0;
             groundPound = 0;
+            speedUp = 0;
+            strokeForward = 0;
         }
         else
         {
@@ -316,7 +334,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             input = input.normalized;
 
             specialJump = Input.GetAxisRaw("Special Jump"); // special jump is a pressed button not a clicked button
-
+            speedUp = Input.GetAxisRaw("Speed Up");
 
 
 
@@ -351,6 +369,21 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 groundPound = 0;
             }
 
+            if (Input.GetAxisRaw("Stroke Forward") == 0)
+            {
+                // we are currently not holding down the stroke forward button
+                strokeForwardEnable = true;
+            }
+            if (strokeForwardEnable && Input.GetAxisRaw("Stroke Forward") > 0)
+            {
+                strokeForward = Input.GetAxisRaw("Stroke Forward");
+                strokeForwardEnable = false;
+            }
+            else
+            {
+                strokeForward = 0;
+            }
+
         }
     }
 
@@ -382,7 +415,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
         else if (characterState == CharacterState.FALLING_NO_CONTROL)
         {
-
+            FallingNoControlState();
         }
         else if (characterState == CharacterState.SLIPPING_NO_CONTROL)
         {
@@ -407,6 +440,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         else if (characterState == CharacterState.POLE_GRABBING)
         {
             PoleGrabbingState();
+        }
+        else if(characterState == CharacterState.INJURY_KNOCKBACK)
+        {
+            InjuryKnockbackState();
         }
     }
 
@@ -461,6 +498,15 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardBottom, transXM, layerMask))
         {
             WallCollsion(hitForwardBottom);
+        }
+    }
+
+    void ExecuteMovementUpwardRaycasts()
+    {
+        RaycastHit hitUpward;
+        if (Physics.Raycast(transform.position + new Vector3(0, upwardThickness - verticalCeilingRaycastOffset, 0), transform.up, out hitUpward, transYUp, layerMask))
+        {
+            CeilingCollision(hitUpward); // double check if we want to know if ymodified
         }
     }
 
@@ -540,7 +586,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             Vector3 direction = (transform.position - hit.point);
             direction.y = 0;
             direction.Normalize();
-            Vector3 translator = hit.point + direction * (forwardThickness + 0.02f);
+            Vector3 translator = hit.point + direction * (forwardThickness + 0.011f);
 
             transform.position = new Vector3(translator.x, transform.position.y, translator.z);
             xzModified = true;
@@ -559,6 +605,20 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
     }
     
+    void CeilingCollision(RaycastHit hit)
+    {
+        if(hit.normal.y < ceilingUpperLimitNormalY)
+        {
+            // a ceiling has been hit
+            float translator = hit.point.y - upwardThickness - 0.02f;
+            transform.position = new Vector3(transform.position.x, translator, transform.position.z);
+            yModified = true;
+            universalMovementVector.y = 0;
+            universalMovementVector.x = hit.normal.x * 0.1f;
+            universalMovementVector.z = hit.normal.z * 0.1f;
+        }
+    }
+
     void FloorCollision(RaycastHit hit, bool truncate)
     {
         if (hit.normal.y > slipperyFloorLowerLimitNormalY) // the boundary between wall and slippery floor
@@ -791,7 +851,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             }
 
             // determine the speed at which to move the player
-            float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
             
             currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, runningSpeedSmoothTime);
             if (noFriction)
@@ -811,7 +871,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 // now determine what kind of jump
                 if (specialJump > 0)
                 {
-                    if ((running || Input.GetKey(KeyCode.E)) && !touchingWall)
+                    if ((running || speedUp > 0) && !touchingWall)
                     {
                         // since we are in the running state we will do a high jump
                         LongJump();
@@ -851,7 +911,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
             transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
         }
-        float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+        float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
         currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
 
         universalMovementVector.x = transform.forward.x * currentSpeed;
@@ -889,7 +949,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
         }
 
-        float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+        float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
         currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
 
         universalMovementVector.x = transform.forward.x * currentSpeed;
@@ -928,7 +988,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
             }
 
-            float targetSpeed = ((running || Input.GetKey(KeyCode.E)) ? runSpeed : walkSpeed) * input.magnitude;
+            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
             currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
 
             universalMovementVector.x = transform.forward.x * currentSpeed;
@@ -950,6 +1010,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     void SlippingState()
     {
         // this is a dead state we have no input only letting the slope push us down with the raycasts
+        if (!isGrounded)
+        {
+            characterState = CharacterState.FALLING;
+        }
     }
 
     void GroundPoundState()
@@ -1115,7 +1179,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // player wants to scroke upwards
             SwimmingStrokeUpward();
         }
-        else if (Input.GetKey(KeyCode.E))
+        else if (strokeForward > 0)
         {
             // player wants to stroke forward
             SwimmingStrokeForward();
@@ -1235,6 +1299,50 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
         // separately we now check for jump
     }
+
+    void InjuryKnockbackState()
+    {
+        // we have no control in this state, only obey gravity, and when timer runs out check for grounded
+        // if so then go to stationary, else go to falling no control
+        universalMovementVector.y += gravityIncrement;
+        universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
+
+        universalMovementVector.x *= explosionKnockBackDecay;
+        universalMovementVector.z *= explosionKnockBackDecay;
+
+        if (injuryKnockbackTimer < injuryKnockbackTime)
+        {
+            injuryKnockbackTimer++;
+        }
+        else
+        {
+            // we are done being injured
+            if (isGrounded)
+            {
+                characterState = CharacterState.STATIONARY;
+                anim.SetTrigger("StationaryState");
+            }
+            else
+            {
+                characterState = CharacterState.FALLING_NO_CONTROL;
+                anim.SetTrigger("FallingNoControl");
+            }
+        }
+    }
+
+    void FallingNoControlState()
+    {
+        if (isGrounded)
+        {
+            characterState = CharacterState.STATIONARY;
+            anim.SetTrigger("StationaryState");
+        }
+        else
+        {
+            universalMovementVector.y += gravityIncrement;
+            universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
+        }
+    }
     
     void SwimmingStrokeUpward()
     {
@@ -1298,7 +1406,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         SWIMMING,
         EDGE_GRAB_HANG,
         EDGE_GRAB_CLIMB,
-        POLE_GRABBING
+        POLE_GRABBING,
+        INJURY_KNOCKBACK
         // a function is called to set this value and must clean up a few values before forcing a no input senario
 
     }
@@ -1348,14 +1457,23 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
     }
 
-    public void InjureCharacter(int damage)
+    public void InjureCharacter(int damage, Vector3 point)
     {
         // this function is called upon triggering an event that harms the player
-        if (playerStats.UpdatePlayerHealth_IsDead(damage))
+        if (characterState != CharacterState.INJURY_KNOCKBACK)
         {
-            // player is dead call for a scene transition to exit back to a default scene
-            Debug.Log("player is Dead");
-            InputAccepted = false;
+            characterState = CharacterState.INJURY_KNOCKBACK;
+            anim.SetTrigger("InjuryKnockbackNoControl");
+            Vector3 direction = (transform.position - point).normalized;
+            //transform.forward = direction;
+            universalMovementVector = direction * explosionKnockBackVelocity;
+            injuryKnockbackTimer = 0;
+            if (playerStats.UpdatePlayerHealth_IsDead(damage))
+            {
+                // player is dead call for a scene transition to exit back to a default scene
+                Debug.Log("player is Dead");
+                InputAccepted = false;
+            }
         }
     }
 

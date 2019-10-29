@@ -14,6 +14,7 @@ GameObject:
   - component: {fileID: 8882888002269146075}
   - component: {fileID: 8882888002269146078}
   - component: {fileID: 8882888002269146079}
+  - component: {fileID: 8296172667812928637}
   m_Layer: 0
   m_Name: diamond_10
   m_TagString: Untagged
@@ -124,3 +125,16 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   value: 10
   audioClip: {fileID: 8300000, guid: fffc938af51b49746979917ac907d92e, type: 3}
+--- !u!114 &8296172667812928637
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 605653357879346730}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c126b11e31011ba41b5e485ba15c1cc0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  offset: {x: 0, y: 0, z: 0}
