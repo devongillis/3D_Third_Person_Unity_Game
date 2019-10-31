@@ -589,14 +589,17 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             Vector3 translator = hit.point + direction * (forwardThickness + 0.011f);
 
             transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+            if (!xzModified)
+            {
+                universalMovementVector.x *= -1;
+                universalMovementVector.z *= -1;
+            }
             xzModified = true;
             if (!isGrounded && currentSpeed > walkSpeed)
             {
                 universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
             }
             currentSpeed = 0.0f;
-            universalMovementVector.x *= -1;
-            universalMovementVector.z *= -1;
             touchingWall = true;
         }
         else
