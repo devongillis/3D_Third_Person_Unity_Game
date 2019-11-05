@@ -60,23 +60,13 @@ public class cameraAudioManager : MonoBehaviour
             transition = true;
         }
     }
-    /*
-    void TransitionBackground()
+
+    public void EndBackgroundMusic()
     {
-        //Debug.Log("transitioning" + background[sourcePlaying].volume);
-        // the source that should be increasing in volume is the pointer
-        volumeIncrement += (1.0f / (fadeTime * 2)) * Time.deltaTime;
-        background[sourcePlaying].volume += volumeIncrement; // audio volume ranges from 0.0 to 1.0
-        background[1 - sourcePlaying].volume -= volumeIncrement;
-        if (background[sourcePlaying].volume >= 0.5f)
-        {
-            background[sourcePlaying].volume = 1.0f;
-            background[1 - sourcePlaying].volume = 0.0f;
-            // transition complete
-            transition = false;
-        }
+        transition = true;
+        sourcePlaying = 1 - sourcePlaying;
     }
-    */
+
     void TransitionBackground()
     {
         // if fade time = 6 seconds then 6/3 = 2 thus every 2 seconds the volume is 1/2 (1 - 0.1), and the
@@ -88,6 +78,7 @@ public class cameraAudioManager : MonoBehaviour
         if (background[sourcePlaying].volume >= 0.99f)
         {
             background[1 - sourcePlaying].volume = 0.0f;
+            background[1 - sourcePlaying].Stop();
             background[sourcePlaying].volume = 1.0f;
             transition = false;
             timeGoneBy = 0.0f;

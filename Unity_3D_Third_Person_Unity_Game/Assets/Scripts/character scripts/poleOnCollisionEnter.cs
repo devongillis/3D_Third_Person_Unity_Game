@@ -5,6 +5,7 @@ using UnityEngine;
 public class poleOnCollisionEnter : MonoBehaviour
 {
     public float poleThickness = 0.0f;
+    public float poleheightFromPosition = 5.0f;
     // Start is called before the first frame update
     void Start()
     {
@@ -15,7 +16,7 @@ public class poleOnCollisionEnter : MonoBehaviour
     {
         if (other.tag == "Player")
         {
-            other.gameObject.GetComponent<UpdatedCharacterControllerScript>().PoleDetected(transform.position, poleThickness);
+            other.gameObject.GetComponent<UpdatedCharacterControllerScript>().PoleDetected(transform.position, poleThickness, poleheightFromPosition);
         }
     }
 }

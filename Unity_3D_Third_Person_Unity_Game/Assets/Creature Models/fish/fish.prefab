@@ -211,6 +211,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   turning: 0
   speed: 0.0001
+  speedRange: {x: 0.2, y: 0.3}
   rotationSpeed: 0.5
   neighbourDistance: 3
   averageHeading: {x: 0, y: 0, z: 0}

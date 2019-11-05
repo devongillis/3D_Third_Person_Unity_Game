@@ -2,8 +2,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class UpdatedCharacterControllerScript : MonoBehaviour
+public class characterControllerWithoutSliding : MonoBehaviour
 {
+
+    // you might have to reset a few values as some were changed
+
     public characterStats playerStats;
 
     public float maximumPlayerHorizontalVelocity;
@@ -150,7 +153,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     // when grounded the y component will be set to zero
     public Vector3 universalMovementVector = new Vector3(0, 0, 0);
     public Vector3 platformRotationVector = new Vector3(0, 0, 0);
-
+    //public float slopeSlipSpeed = 0.1f;
     public bool InputAccepted = true;
     public int groundPoundTimer = 0;
     public int groundPoundTimeLimit = 60; // frames
@@ -186,14 +189,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     float transXM;
     float transY;
     float transYUp;
-    bool wasGrounded = false;
-    bool slideApplied = false;
-
-    //float floorNormalY = 1.0f;
-    Vector3 floorNormal = new Vector3(0, 1, 0);
-
-    float actualMovementFactor = 0.0f;
-    Vector3 theForward;
 
     // Start is called before the first frame update
     void Start()
@@ -268,27 +263,35 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // add it to the universalTranslationVector
         // also DO NOT USE DELTA TIME, only use motion as frame by frame Application.targetFrameRate = 30
 
+
         // reset these variables for each update
         touchingWall = false;
         xzModified = false;
         yModified = false;
         XZ = new Vector3(universalMovementVector.x, 0, universalMovementVector.z);
         Y = new Vector3(0, universalMovementVector.y, 0);
-        wasGrounded = isGrounded;
         isGrounded = false;
         transX = forwardThickness + (horizontalRaycastOffset - forwardThickness) + 0.01f;
         transXM = XZ.magnitude + transX;
         transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.1f; // 0.1f check for bigger slope values
         transYUp = verticalCeilingRaycastOffset + Y.y + 0.01f; // 0.1f check for bigger slope values
-        slideApplied = false;
+
 
         ExecuteNoDirectionRaycasts();
 
         ExecuteMovementForwardRaycasts();
 
+        // around here we do the ceiling raycasts
         ExecuteMovementUpwardRaycasts();
 
         ExecuteMovementDownwardRaycasts();
+
+        ExecuteTruncateDownwardRaycasts();
+
+
+
+
+
 
         // only if not modified will this function move the player in that coordinate
         MoveCharacter(universalMovementVector + platformRotationVector, xzModified, yModified);
@@ -305,7 +308,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             EdgeCollision();
         }
 
-        //Debug.Log("fixed update: " + isGrounded + " " + characterState);
+
         //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 10, Color.red);
     }
 
@@ -417,13 +420,9 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             FallingNoControlState();
         }
-        else if (characterState == CharacterState.SLIPPING_WITH_CONTROL)
-        {
-            SlippingWithControlState();
-        }
         else if (characterState == CharacterState.SLIPPING_NO_CONTROL)
         {
-            SlippingNoControlState();
+            SlippingState();
         }
         else if (characterState == CharacterState.GROUND_POUND)
         {
@@ -453,71 +452,55 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void ExecuteNoDirectionRaycasts()
     {
-        Vector3 XZNormalizedForward = XZ.normalized;
-        
-        if (XZNormalizedForward == Vector3.zero)
+        RaycastHit noDirection;
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), transform.forward, out noDirection, transX, layerMask))
         {
-            XZNormalizedForward = transform.forward;
+            WallCollsion(noDirection);
         }
-
-        Vector3 XZNormalizedRight = Quaternion.Euler(0, 90, 0) * XZNormalizedForward;
-
-        if (!wasGrounded || XZ == Vector3.zero)
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.forward * (horizontalRaycastOffset - forwardThickness), -transform.forward, out noDirection, transX, layerMask))
         {
-            RaycastHit noDirection;
-
-            if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) + XZNormalizedForward * (horizontalRaycastOffset - forwardThickness), -XZNormalizedForward, out noDirection, transX, layerMask))
-            {
-                WallCollisionMoveBack(noDirection);
-            }
-            if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - XZNormalizedRight * (horizontalRaycastOffset - forwardThickness), XZNormalizedRight, out noDirection, transX, layerMask))
-            {
-                WallCollisionMoveBack(noDirection);
-            }
-            if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) + XZNormalizedRight * (horizontalRaycastOffset - forwardThickness), -XZNormalizedRight, out noDirection, transX, layerMask))
-            {
-                WallCollisionMoveBack(noDirection);
-            }
+            WallCollsion(noDirection);
+        }
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.right * (horizontalRaycastOffset - forwardThickness), transform.right, out noDirection, transX, layerMask))
+        {
+            WallCollsion(noDirection);
+        }
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) + transform.right * (horizontalRaycastOffset - forwardThickness), -transform.right, out noDirection, transX, layerMask))
+        {
+            WallCollsion(noDirection);
         }
     }
 
     void ExecuteMovementForwardRaycasts()
     {
-
-        Vector3 XZNormalizedForward = XZ.normalized;
-        if (XZNormalizedForward == Vector3.zero)
-        {
-            XZNormalizedForward = transform.forward;
-        }
-
-        RaycastHit hitForwardBottom;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZNormalizedForward, out hitForwardBottom, transXM, layerMask))
-        {
-            WallCollisionSlide(hitForwardBottom);
-        }
-
         RaycastHit hitForwardTop;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZNormalizedForward, out hitForwardTop, transXM, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardTop, transXM, layerMask))
         {
-            WallCollisionSlide(hitForwardTop);
+            WallCollsion(hitForwardTop);
         }
 
         RaycastHit hitForwardMiddle1;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle1, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZNormalizedForward, out hitForwardMiddle1, transXM, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle1, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardMiddle1, transXM, layerMask))
         {
-            WallCollisionSlide(hitForwardMiddle1);
+            WallCollsion(hitForwardMiddle1);
         }
 
         RaycastHit hitForwardMiddle2;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle2, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZNormalizedForward, out hitForwardMiddle2, transXM, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle2, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardMiddle2, transXM, layerMask))
         {
-            WallCollisionSlide(hitForwardMiddle2);
+            WallCollsion(hitForwardMiddle2);
         }
 
         RaycastHit hitForwardMiddle3;
-        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle3, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZNormalizedForward, out hitForwardMiddle3, transXM, layerMask))
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightMiddle3, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardMiddle3, transXM, layerMask))
         {
-            WallCollisionSlide(hitForwardMiddle3);
+            WallCollsion(hitForwardMiddle3);
+        }
+
+        RaycastHit hitForwardBottom;
+        if (Physics.Raycast(transform.position + new Vector3(0, forwardHeightBottom, 0) - transform.forward * (horizontalRaycastOffset - forwardThickness), XZ, out hitForwardBottom, transXM, layerMask))
+        {
+            WallCollsion(hitForwardBottom);
         }
     }
 
@@ -532,25 +515,34 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void ExecuteMovementDownwardRaycasts()
     {
-
         RaycastHit hitDownward;
-        float distanceDownward;
-
-        if (characterState == CharacterState.STATIONARY || characterState == CharacterState.RUNNING || characterState == CharacterState.SLIPPING_WITH_CONTROL || characterState == CharacterState.SLIPPING_NO_CONTROL) {
-            distanceDownward = slopeDownwardCheckDistance + verticalRaycastOffset + 0.01f;
-        }
-        else
+        if (Physics.Raycast(transform.position + new Vector3(0, verticalRaycastOffset - downwardThickness, 0), -transform.up, out hitDownward, transY, layerMask))
         {
-            distanceDownward = transY;
-        }
-
-        if (Physics.Raycast(transform.position + new Vector3(0, (verticalRaycastOffset - downwardThickness) + 0.01f, 0), -transform.up, out hitDownward, distanceDownward, layerMask))
-        {
-            FloorCollision(hitDownward); // double check if we want to know if ymodified
+            FloorCollision(hitDownward, false); // double check if we want to know if ymodified
         }
         else
         {
             isGrounded = false;
+        }
+    }
+
+    void ExecuteTruncateDownwardRaycasts()
+    {
+        // now we test for the truncated ground movement
+        // just check if we are running or stationary, if so then test the truncate
+        // we need this as it starts from a different height
+        if (characterState == CharacterState.STATIONARY || characterState == CharacterState.RUNNING)
+        {
+            // check for the ground
+            RaycastHit truncate;
+            if (Physics.Raycast(transform.position + new Vector3(0, 0.01f, 0), -transform.up, out truncate, slopeDownwardCheckDistance + 0.01f, layerMask))
+            {
+                FloorCollision(truncate, true);
+            }
+            else
+            {
+                isGrounded = false;
+            }
         }
         if (!isGrounded)
         {
@@ -560,17 +552,57 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             }
         }
     }
-    
-    void WallCollisionMoveBack(RaycastHit hit)
+    /*
+    void WallCollsion(RaycastHit hit)
     {
         if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
         {
+            Vector3 hitNormalxz = new Vector3(hit.normal.x, 0, hit.normal.z);
+            hitNormalxz.Normalize();
+
+            //Vector3 translator = hit.point + hit.normal * (forwardThickness + 0.02f);
+            Vector3 translator = hit.point + hitNormalxz * (forwardThickness + 0.02f);
+
+            transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+            xzModified = true;
+            if (!isGrounded && currentSpeed > walkSpeed)
+            {
+                universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
+            }
+            currentSpeed = 0.0f;
+            universalMovementVector.x *= -1;
+            universalMovementVector.z *= -1;
+        }
+        else
+        {
+            // a surface was found but it does not meet the definition of a wall
+        }
+    }
+    */
+    void WallCollsion(RaycastHit hit)
+    {
+        // experimental
+        if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
+        {
+            Vector3 hitNormalxz = new Vector3(hit.normal.x, 0, hit.normal.z);
+            hitNormalxz.Normalize();
             Vector3 direction = (transform.position - hit.point);
             direction.y = 0;
             direction.Normalize();
             Vector3 translator = hit.point + direction * (forwardThickness + 0.011f);
 
             transform.position = new Vector3(translator.x, transform.position.y, translator.z);
+            if (!xzModified)
+            {
+                universalMovementVector.x *= -1;
+                universalMovementVector.z *= -1;
+            }
+            xzModified = true;
+            if (!isGrounded && currentSpeed > walkSpeed)
+            {
+                universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
+            }
+            currentSpeed = 0.0f;
             touchingWall = true;
         }
         else
@@ -579,57 +611,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
     }
 
-    void WallCollisionSlide(RaycastHit hit)
-    {
-        if (hit.normal.y >= wallLowerLimitNormalY && hit.normal.y <= wallUpperLimitNormalY)
-        {
-            Vector2 forward = new Vector2(transform.forward.x, transform.forward.z);
-            Vector2 normal = new Vector2(hit.normal.x, hit.normal.z);
-            float angle = Vector2.Angle(forward, normal);
-            RaycastHit pinch;
-            if (/*floorNormalY < floorLowerLimitNormalY ||*/ slideApplied || Physics.Raycast(hit.point, hit.normal, out pinch, forwardThickness * 2 + 0.01f, layerMask) || angle > 135)
-            {
-                // we hit a corner pinch
-                Vector3 direction = (transform.position - hit.point);
-                direction.y = 0;
-                direction.Normalize();
-                Vector3 translator = hit.point + direction * (forwardThickness + 0.011f);
-
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                universalMovementVector.x = 0;
-                universalMovementVector.z = 0;
-                
-                xzModified = true;
-                if (!isGrounded && currentSpeed > walkSpeed)
-                {
-                    universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
-                }
-                currentSpeed = 0.0f;
-                touchingWall = true;
-            }
-            else
-            {
-                slideApplied = true;
-                // player is allowed to slide
-                Vector3 hitNormalxz = new Vector3(hit.normal.x, 0, hit.normal.z);
-                hitNormalxz.Normalize();
-
-                Vector3 translator = hit.point + hitNormalxz * (forwardThickness + 0.02f);
-
-                transform.position = new Vector3(translator.x, transform.position.y, translator.z);
-                xzModified = true;
-                if (!isGrounded && currentSpeed > walkSpeed)
-                {
-                    universalMovementVector.y = Mathf.Min(universalMovementVector.y, 0.0f);
-                }
-            }
-        }
-        else
-        {
-            // a surface was found but it does not meet the definition of a wall
-        }
-    }
-    
     void CeilingCollision(RaycastHit hit)
     {
         if (hit.normal.y < ceilingUpperLimitNormalY)
@@ -644,17 +625,11 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
     }
 
-    void FloorCollision(RaycastHit hit)
+    void FloorCollision(RaycastHit hit, bool truncate)
     {
         if (hit.normal.y > slipperyFloorLowerLimitNormalY) // the boundary between wall and slippery floor
         {
             // we have found a floor below we must truncate to it
-            if(characterState == CharacterState.JUMPING_HIGH || characterState == CharacterState.JUMPING_LONG || characterState == CharacterState.JUMPING_LOW)
-            {
-                characterState = CharacterState.RUNNING;
-                anim.SetTrigger("RunningState");
-                universalMovementVector.y = 0;
-            }
             float translator = hit.point.y + downwardThickness;
             transform.position = new Vector3(transform.position.x, translator, transform.position.z);
             yModified = true;
@@ -676,90 +651,41 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 noFriction = true;
             }
 
-            //floorNormalY = hit.normal.y;
-            floorNormal = hit.normal;
-            Vector3 hitNormalXZ = new Vector3(hit.normal.x, 0, hit.normal.z);
-            RaycastHit ray;
-            bool useRegFloor = false;
-            if (Physics.Raycast(transform.position, hitNormalXZ, out ray, 1.0f, layerMask))
+            // now we need to move the character back by a value proportional to the slope
+            // we haven't applied the universal vector yet so we need to limit its values
+
+            if (!truncate && characterState != CharacterState.SWIMMING)
             {
-                useRegFloor = true;
-            }
-
-            if (floorNormal.y >= semiSlipperyFloorUpperLimitNormalY || useRegFloor)
-            {
-                // regular floor, no resistance
-                if(characterState == CharacterState.SLIPPING_WITH_CONTROL || characterState == CharacterState.SLIPPING_NO_CONTROL)
+                if (hit.normal.y <= slipperyFloorUpperLimitNormalY) // 0.5, this is not working at all
                 {
-                    characterState = CharacterState.STATIONARY;
-                    anim.SetTrigger("StationaryState");
-                }
-            }
-            else if (floorNormal.y < semiSlipperyFloorUpperLimitNormalY && floorNormal.y > semiSlipperyFloorLowerLimitNormalY)
-            {
-                if (characterState == CharacterState.SLIPPING_WITH_CONTROL || characterState == CharacterState.SLIPPING_NO_CONTROL)
-                {
-                    characterState = CharacterState.STATIONARY;
-                    anim.SetTrigger("StationaryState");
-                }
-
-                float reductionFactor;
-                // within the range of a resistive floor
-                reductionFactor = (floorNormal.y - semiSlipperyFloorLowerLimitNormalY) / (semiSlipperyFloorUpperLimitNormalY - semiSlipperyFloorLowerLimitNormalY);
-                // we need to limit the player's movement with respect to the slope the player is on
-                // we first limit the x and z by the general slope so he doesn't sky rocket up
-                // then we must deduct the uni vector by the slopes xz in respect to the slopes y
-                // the amount we deduct by is proportional to the xz of the slope, the y of the slope
-                // and how much the player is trying to walk up the slope
-
-                // the reduction factor takes care of the sky rocket effect it but is doesn't factor how hard a steep
-                // slope is to climb
-                Vector2 slopeXZ = new Vector2(hit.normal.x, hit.normal.z);
-                Vector2 slopeXZNormalized = slopeXZ.normalized;
-                Vector2 uniXZ = new Vector2(XZ.x, XZ.z);
-                float uniXZMag = uniXZ.magnitude;
-                Vector2 slopeXZMag = slopeXZNormalized * uniXZMag;
-
-                float dot = Vector2.Dot(uniXZ.normalized, slopeXZ.normalized);
-                if (dot <= 0)
-                {
-                    dot *= -1;
-                    float factor = 1 - reductionFactor;
-                    Vector2 deduction = slopeXZMag * dot * factor;
-                    universalMovementVector += new Vector3(deduction.x, 0, deduction.y);
+                    // slippery slope
+                    characterState = CharacterState.SLIPPING_NO_CONTROL;
+                    anim.SetTrigger("SlippingNoControl");
+                    transform.Translate(new Vector3(hit.normal.x * slipSpeed, 0, hit.normal.z * slipSpeed));
+                    xzModified = true;
                 }
                 else
                 {
-                    // we are not moving against the slope do nothing
-                }
-            }
-            else
-            {
-                // we are on a slippery floor but we can't apply the motion because the universal movement vector has
-                // used by the wall raycasts and thus slipping can cause us to clip between the walls we slip into
-                // by having us slip with a different uni vector than what was used for the walls
-                // we should save the hit.normal, and apply it in the slipping state then we can raycast for walls
-
-                if (Vector2.Dot(new Vector2(transform.forward.x, transform.forward.z), new Vector2(floorNormal.x, floorNormal.z)) <= 0)
-                {
-                    // player was trying to move up the slope
-                    float targetRotation = Mathf.Atan2(-floorNormal.x, -floorNormal.z) * Mathf.Rad2Deg;// + cameraT.eulerAngles.y;
-                    transform.eulerAngles = Vector3.up * targetRotation;
-                    if (characterState != CharacterState.SLIPPING_NO_CONTROL)
+                    if (characterState == CharacterState.SLIPPING_NO_CONTROL)
                     {
-                        characterState = CharacterState.SLIPPING_NO_CONTROL;
-                        anim.SetTrigger("SlippingNoControl");
+                        characterState = CharacterState.STATIONARY;
+                        anim.SetTrigger("StationaryState");
                     }
-                }
-                else
-                {
-                    // player was trying to move down the slope
-                    float targetRotation = Mathf.Atan2(floorNormal.x, floorNormal.z) * Mathf.Rad2Deg;// + cameraT.eulerAngles.y;
-                    transform.eulerAngles = Vector3.up * targetRotation;
-                    if (characterState != CharacterState.SLIPPING_WITH_CONTROL)
+
+                    if (hit.normal.y <= semiSlipperyFloorUpperLimitNormalY)
                     {
-                        characterState = CharacterState.SLIPPING_WITH_CONTROL;
-                        anim.SetTrigger("SlippingWithControl");
+                        // semi slippery slope
+                        Vector2 uxz = new Vector2(universalMovementVector.x, universalMovementVector.z);
+                        float um = uxz.magnitude;
+                        float deduction = (semiSlipperyFloorUpperLimitNormalY - hit.normal.y) / (semiSlipperyFloorUpperLimitNormalY - semiSlipperyFloorLowerLimitNormalY);
+                        Vector2 normal = new Vector2(hit.normal.x, hit.normal.z);
+                        normal.Normalize();
+                        universalMovementVector.x += normal.x * deduction * walkSpeed;
+                        universalMovementVector.z += normal.y * deduction * walkSpeed;
+                    }
+                    else
+                    {
+                        // regular floor
                     }
                 }
             }
@@ -794,6 +720,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void EdgeCollision()
     {
+        //Debug.DrawRay(new Vector3(transform.position.x, transform.position.y, transform.position.z), transform.forward * (forwardThickness + 0.5f), Color.red);
+
         if (universalMovementVector.y <= 0 && !isGrounded)
         {
             if (input.magnitude > 0.5f)
@@ -808,12 +736,17 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     {
                         if (hitEdgeDownward.transform.tag != "notEdge")
                         {
+                            //Debug.DrawRay(new Vector3(transform.position.x, hitEdgeDownward.point.y - 0.1f, transform.position.z), transform.forward * (forwardThickness + 0.5f), Color.red);
+                            //Physics.Raycast(new Vector3(transform.position.x, hitEdgeDownward.point.y - 0.1f, transform.position.z), transform.forward, out hitEdgeForward, forwardThickness + 0.5f, layerMask
                             if (Physics.Raycast(new Vector3(transform.position.x, hitEdgeDownward.point.y - 0.1f, transform.position.z), transform.forward, out hitEdgeForward, forwardThickness + 0.5f, layerMask))
                             {
+
                                 // we struck a wall that meets the first definition of an edge
                                 if (hitEdgeForward.normal.y >= -0.09f && hitEdgeForward.normal.y <= 0.09f)
                                 {
+
                                     // we struck an edge and a wall that works
+                                    //Debug.Log("edge found");
                                     characterState = CharacterState.EDGE_GRAB_HANG;
                                     anim.SetTrigger("EdgeGrabHang");
                                     anim.SetFloat("speed", 0.5f);
@@ -825,7 +758,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                                     float posZ = hitEdgeForward.point.z + hitEdgeForward.normal.z * distanceBack;
                                     float posY = hitEdgeDownward.point.y - forwardHeightTop + posYOffset;
                                     transform.position = new Vector3(posX, posY, posZ);
-
+                                    //anim.SetFloat("speed", 0);
                                     hangStateTimer = hangStateTime;
                                     allowedToEdgeGrab = false;
                                     transform.forward = new Vector3(-hitEdgeForward.normal.x, 0, -hitEdgeForward.normal.z);
@@ -925,7 +858,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             }
 
             // determine the speed at which to move the player
-            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude * floorNormal.y;
+            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
 
             currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, runningSpeedSmoothTime);
             if (noFriction)
@@ -960,10 +893,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     RegularJump();
                 }
             }
-            //Debug.Log("hello" + (currentSpeed / runSpeed) * (1 / Mathf.Sqrt(1 - floorNormalY * floorNormalY)));
-            //Debug.Log("hello " + (currentSpeed / runSpeed) / floorNormalY);
-            //anim.SetFloat("speed", input.magnitude); // divide by reductionFactor
-            anim.SetFloat("speed", (currentSpeed / runSpeed) / floorNormal.y); // divide by reductionFactor
+            anim.SetFloat("speed", currentSpeed / runSpeed);
         }
     }
 
@@ -1084,121 +1014,12 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         }
     }
 
-    void SlippingWithControlState()
+    void SlippingState()
     {
         // this is a dead state we have no input only letting the slope push us down with the raycasts
         if (!isGrounded)
         {
             characterState = CharacterState.FALLING;
-            anim.SetTrigger("Falling");
-        }
-        else
-        {
-            Vector3 a = Vector3.zero;
-            if (input.magnitude == 0)
-            {
-                theForward = Vector3.SmoothDamp(theForward, Vector3.zero, ref a, 1.0f);
-            }
-            else
-            {
-                float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-                theForward = Quaternion.AngleAxis(targetRotation, Vector3.up) * Vector3.forward;
-                theForward.Normalize();
-            }
-
-            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
-            
-            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, 1.0f);
-            universalMovementVector = theForward * currentSpeed;
-            universalMovementVector.y = 0;
-            
-            // we are on a slippery floor but we can't apply the motion because the universal movement vector has
-            // used by the wall raycasts and thus slipping can cause us to clip between the walls we slip into
-            // by having us slip with a different uni vector than what was used for the walls
-            // we should save the hit.normal, and apply it in the slipping state then we can raycast for walls
-
-            float slopeSpeed = (1 - floorNormal.y) * runSpeed;
-
-            Vector2 desiredSlip = new Vector2(floorNormal.x, floorNormal.z).normalized * slopeSpeed;
-
-            //actualMovementFactor; // this should be 0.9 if player is fighting slope, ~0.5 if dot 0 of slope, 0 if player moving with slope
-            float newDot = Vector2.Dot(new Vector2(universalMovementVector.x, universalMovementVector.z).normalized, new Vector2(floorNormal.x, floorNormal.z).normalized);
-
-            if (newDot < 0)
-            {
-                // range is 0.3 to 0.5
-                actualMovementFactor = 0.3f + ((0.5f - 0.3f) * (1 + newDot));
-            }
-            else
-            {
-                // range is 0.5 to 1.0
-                actualMovementFactor = 0.5f + ((1.0f - 0.5f) * (newDot * currentSpeed/runSpeed));
-            }
-
-            Vector2 actualMovement = Vector2.Lerp(desiredSlip, new Vector2(universalMovementVector.x, universalMovementVector.z), actualMovementFactor);
-
-            universalMovementVector.x = actualMovement.x;
-            universalMovementVector.z = actualMovement.y;
-        }
-    }
-
-    void SlippingNoControlState()
-    {
-        // right now the player has the same control as the slipping with control state, change this later
-        // only if we slipped while facing into the floor
-        if (!isGrounded)
-        {
-            characterState = CharacterState.FALLING;
-            anim.SetTrigger("Falling");
-            Debug.Log("falling");
-        }
-        else
-        {
-            Vector3 a = Vector3.zero;
-            if (input.magnitude == 0)
-            {
-                theForward = Vector3.SmoothDamp(theForward, Vector3.zero, ref a, 1.0f);
-            }
-            else
-            {
-                float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-                theForward = Quaternion.AngleAxis(targetRotation, Vector3.up) * Vector3.forward;
-                theForward.Normalize();
-            }
-
-            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
-
-            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, 1.0f);
-            universalMovementVector = theForward * currentSpeed;
-            universalMovementVector.y = 0;
-
-            // we are on a slippery floor but we can't apply the motion because the universal movement vector has
-            // used by the wall raycasts and thus slipping can cause us to clip between the walls we slip into
-            // by having us slip with a different uni vector than what was used for the walls
-            // we should save the hit.normal, and apply it in the slipping state then we can raycast for walls
-
-            float slopeSpeed = (1 - floorNormal.y) * runSpeed;
-
-            Vector2 desiredSlip = new Vector2(floorNormal.x, floorNormal.z).normalized * slopeSpeed;
-
-            //actualMovementFactor; // this should be 0.9 if player is fighting slope, ~0.5 if dot 0 of slope, 0 if player moving with slope
-            float newDot = Vector2.Dot(new Vector2(universalMovementVector.x, universalMovementVector.z).normalized, new Vector2(floorNormal.x, floorNormal.z).normalized);
-
-            if (newDot < 0)
-            {
-                // range is 0.3 to 0.5
-                actualMovementFactor = 0.3f + ((0.5f - 0.3f) * (1 + newDot));
-            }
-            else
-            {
-                // range is 0.5 to 1.0
-                actualMovementFactor = 0.5f + ((1.0f - 0.5f) * (newDot * currentSpeed / runSpeed));
-            }
-
-            Vector2 actualMovement = Vector2.Lerp(desiredSlip, new Vector2(universalMovementVector.x, universalMovementVector.z), actualMovementFactor);
-
-            universalMovementVector.x = actualMovement.x;
-            universalMovementVector.z = actualMovement.y;
         }
     }
 
@@ -1235,6 +1056,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // to the side or to climb up or to let go
         // left and right no longer factor in the camera they move in respect to the edge
         // must check if more edge is avaialable to move over to
+        //Physics.Raycast(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up, out moveRight, 0.2f, layerMask);
+        //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop + 0.1f, 0) + transform.right * 1f + transform.forward * 1f, -transform.up * 0.2f, Color.red);
 
         if (hangStateTimer <= 0)
         {
@@ -1537,6 +1360,8 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     void SwimmingStrokeForward()
     {
         currentSpeed = swimmingStrokeForwardInitialSpeed.x;
+        //universalMovementVector.x = transform.forward.x * swimmingStrokeForwardInitialSpeed.x;
+        //universalMovementVector.z = transform.forward.z * swimmingStrokeForwardInitialSpeed.x;
         universalMovementVector.y = swimmingStrokeForwardInitialSpeed.y;
         if (isGrounded)
         {
@@ -1583,7 +1408,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         JUMPING_HIGH,
         FALLING, // upon ground detection will transition to stationary
         FALLING_NO_CONTROL, // when fall starts without a jump (i.e. bumped off edge)
-        SLIPPING_WITH_CONTROL,
         SLIPPING_NO_CONTROL,
         GROUND_POUND,
         SWIMMING,
@@ -1601,7 +1425,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // must clean up a few things before setting the state to no inputs
     }
 
-    public void PoleDetected(Vector3 polePosition, float poleThickness, float poleHeight)
+    public void PoleDetected(Vector3 polePosition, float poleThickness)
     {
         // pole thickness used if we want thick poles (logs) to climb up
         // we are only concerned with the pole x and z
@@ -1612,9 +1436,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // we are not yet grabbing the pole and allowed to
             characterState = CharacterState.POLE_GRABBING;
             anim.SetTrigger("PoleGrabbing");
-            float y = Mathf.Min(polePosition.y + poleHeight - forwardHeightTop, transform.position.y);
-            transform.position = new Vector3(polePosition.x, y, polePosition.z);
-            //transform.position = new Vector3(polePosition.x, transform.position.y, polePosition.z);
+            transform.position = new Vector3(polePosition.x, transform.position.y, polePosition.z);
             universalMovementVector = Vector3.zero;
             currentSpeed = 0;
             // have the mesh moved back in animation to account for the pole occupying the player's x and z
@@ -1660,18 +1482,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 Debug.Log("player is Dead");
                 InputAccepted = false;
             }
-        }
-    }
-
-    public bool isGroundPounding()
-    {
-        if(characterState == CharacterState.GROUND_POUND)
-        {
-            return true;
-        }
-        else
-        {
-            return false;
         }
     }
 

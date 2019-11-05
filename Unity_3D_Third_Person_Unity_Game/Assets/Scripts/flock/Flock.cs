@@ -8,6 +8,7 @@ public class Flock : MonoBehaviour
     public bool turning = false;
 
     public float speed = 0.001f;
+    public Vector2 speedRange = new Vector2(0.5f, 1.0f);
     public float rotationSpeed = 4.0f;
     public float neighbourDistance = 3.0f;
 
@@ -21,7 +22,7 @@ public class Flock : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-        speed = Random.Range(0.5f, 1f);
+        speed = Random.Range(speedRange.x, speedRange.y);
     }
 
     public void AssignTheTank(GameObject m)
@@ -56,7 +57,7 @@ public class Flock : MonoBehaviour
         {
             Vector3 direction = tankPosition - transform.position;
             transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(direction), rotationSpeed * Time.deltaTime);
-            speed = Random.Range(0.5f, 1f);
+            speed = Random.Range(speedRange.x, speedRange.y);
         }
         else
         {
