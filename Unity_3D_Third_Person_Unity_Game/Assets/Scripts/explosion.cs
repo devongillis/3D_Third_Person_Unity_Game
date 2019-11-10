@@ -53,7 +53,8 @@ public class explosion : MonoBehaviour
         //gameObject.SetActive(false);
         if(other.tag == "Player")
         {
-            other.GetComponent<UpdatedCharacterControllerScript>().InjureCharacter(1, transform.position);
+            //other.GetComponent<UpdatedCharacterControllerScript>().InjureCharacter(1, transform.position, true);
+            other.SendMessage("InjureCharacter", new AttackData(1, transform.position, false));
         }
     }
 }

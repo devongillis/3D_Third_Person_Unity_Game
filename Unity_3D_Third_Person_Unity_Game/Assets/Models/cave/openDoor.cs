@@ -17,7 +17,6 @@ public class openDoor : MonoBehaviour
     {
         oldPosition = transform.localPosition;
         newPosition = new Vector3(transform.localPosition.x, transform.localPosition.y + moveByY, transform.localPosition.z);
-        //OpenDoor();
     }
 
     // Update is called once per frame
@@ -27,11 +26,8 @@ public class openDoor : MonoBehaviour
         {
             factor += increment;
             transform.localPosition = Vector3.Lerp(oldPosition, newPosition, factor);
-            //transform.Translate(new Vector3(0, -increment, 0));
             if (factor >= 1.0f)
             {
-                //factor = 0;
-                //openRequested = false;
                 doorOpen = true;
             }
         }

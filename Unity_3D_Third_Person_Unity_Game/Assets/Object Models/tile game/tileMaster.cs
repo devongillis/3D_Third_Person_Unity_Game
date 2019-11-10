@@ -10,7 +10,7 @@ public class tileMaster : MonoBehaviour
     Vector3[][] grid;
     public GameObject[] tiles;
     public bool inuse = false;
-    public GameObject door;
+    public GameObject masterObject;
     //public GameObject prefab;
 
     // Start is called before the first frame update
@@ -134,8 +134,8 @@ public class tileMaster : MonoBehaviour
     public void TriggerCutScene()
     {
         Debug.Log("winner");
-        door.GetComponent<openDoor>().OpenDoor();
-
+        //door.GetComponent<openDoor>().OpenDoor();
+        masterObject.GetComponent<CutSceneManager>().StartOpenCaveDoorCutScene();
     }
 
     public Vector3 MoveTile(int tileNumber, int position, int desiredDirection)

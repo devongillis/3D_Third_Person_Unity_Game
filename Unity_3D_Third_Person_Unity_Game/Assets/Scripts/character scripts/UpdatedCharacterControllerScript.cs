@@ -59,7 +59,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public float wallLowerLimitNormalY;// = -0.174f; // >=
     // a ceiling is defined as any surface with normal.y between -1.0 and -0.174
     public float ceilingUpperLimitNormalY;// = -0.174; // <=
-                                          // -1.0f is the minimum value for normal.y so we don't need to use this value for ceilings
+    // -1.0f is the minimum value for normal.y so we don't need to use this value for ceilings
 
 
 
@@ -111,7 +111,6 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
     float currentSpeed;
-    //float wallTouchSpeed = 0.01f;
     bool touchingWall = false;
 
 
@@ -141,7 +140,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     // secondary input variables
     public bool running;
 
-
+    public bool fallingWithInput = true;
 
 
     // this is the vector by which the player moves, all inputs and movements are added to this vector and then
@@ -155,6 +154,11 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     public int groundPoundTimer = 0;
     public int groundPoundTimeLimit = 60; // frames
 
+
+    public int fallDamageTimer = 60;
+    public int fallDamageTime = 60;
+    public int injurySquishTimer = 100;
+    public int injurySquishTime = 100;
 
     public int hangStateTimer = 0; // upon entering the hang state all input is ignored for a little bit
     public int hangStateTime = 60;
@@ -203,7 +207,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         layerMask = ~layerMask;
         cameraT = Camera.main.transform;
 
-        playerStats = this.transform.GetComponent<characterStats>();
+        playerStats = transform.GetComponent<characterStats>();
 
 
         regularFloorStartArc = regularFloorStart * arcRatio;
@@ -260,34 +264,28 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         CollectAndConfigureInputs(); // inputs are collected
         ExecuteState(); // execute actions based of current state of player
 
-        // no matter what state we are in we must check the collisions with the ray cast
-        // thus we do the collision testing after the state function
-        // each raycast will set values of their own (downward raycast will set isgrounded if it detects a ground)
-        // thus checking for isgrounded is done by variable rather than function
-        // the downward raycast must check for ground and a rotating body, if rotating body is found then
-        // add it to the universalTranslationVector
-        // also DO NOT USE DELTA TIME, only use motion as frame by frame Application.targetFrameRate = 30
+        // DO NOT USE DELTA TIME, only use motion as frame by frame Application.targetFrameRate = 30
 
         // reset these variables for each update
+
+        wasGrounded = isGrounded;
+        isGrounded = false;
+        slideApplied = false;
         touchingWall = false;
         xzModified = false;
         yModified = false;
+
         XZ = new Vector3(universalMovementVector.x, 0, universalMovementVector.z);
         Y = new Vector3(0, universalMovementVector.y, 0);
-        wasGrounded = isGrounded;
-        isGrounded = false;
+        
         transX = forwardThickness + (horizontalRaycastOffset - forwardThickness) + 0.01f;
         transXM = XZ.magnitude + transX;
         transY = -(Y.y - downwardThickness) + (verticalRaycastOffset - downwardThickness) + 0.1f; // 0.1f check for bigger slope values
         transYUp = verticalCeilingRaycastOffset + Y.y + 0.01f; // 0.1f check for bigger slope values
-        slideApplied = false;
-
+        
         ExecuteNoDirectionRaycasts();
-
         ExecuteMovementForwardRaycasts();
-
         ExecuteMovementUpwardRaycasts();
-
         ExecuteMovementDownwardRaycasts();
 
         // only if not modified will this function move the player in that coordinate
@@ -299,13 +297,18 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             allowedToEdgeGrab = true;
             allowedToGrabPole = true;
         }
-        // do not combine these
+        // do not combine these, other conditions might be added to allow edge collision
         if (allowedToEdgeGrab)
         {
             EdgeCollision();
         }
 
-        //Debug.Log("fixed update: " + isGrounded + " " + characterState);
+        if(characterState != CharacterState.FALLING && characterState != CharacterState.JUMPING_LONG)
+        {
+            //Debug.Log("reset");
+            fallDamageTimer = fallDamageTime;
+        }
+
         //Debug.DrawRay(transform.position + new Vector3(0, forwardHeightTop, 0), transform.forward * 10, Color.red);
     }
 
@@ -448,6 +451,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         else if (characterState == CharacterState.INJURY_KNOCKBACK)
         {
             InjuryKnockbackState();
+        }
+        else if (characterState == CharacterState.INJURY_SQUISH)
+        {
+            InjurySquishedState();
         }
     }
 
@@ -646,12 +653,14 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void FloorCollision(RaycastHit hit)
     {
+        //Debug.Log("state before " + characterState);
         if (hit.normal.y > slipperyFloorLowerLimitNormalY) // the boundary between wall and slippery floor
         {
             // we have found a floor below we must truncate to it
             if(characterState == CharacterState.JUMPING_HIGH || characterState == CharacterState.JUMPING_LONG || characterState == CharacterState.JUMPING_LOW)
             {
                 characterState = CharacterState.RUNNING;
+                //Debug.Log("floor to run");
                 anim.SetTrigger("RunningState");
                 universalMovementVector.y = 0;
             }
@@ -749,7 +758,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                     {
                         characterState = CharacterState.SLIPPING_NO_CONTROL;
                         anim.SetTrigger("SlippingNoControl");
+                        //anim.SetFloat("angle", (90 - Mathf.Asin(floorNormal.y) * arcRatio)/80);
                     }
+                    Debug.Log(floorNormal.y);
+                    anim.SetFloat("angle", (90 - Mathf.Asin(floorNormal.y) / arcRatio) / 80);
                 }
                 else
                 {
@@ -768,6 +780,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             isGrounded = false;
         }
+        //Debug.Log("state after " + characterState);
     }
 
     void MoveCharacter(Vector3 movement, bool xz, bool y)
@@ -873,6 +886,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 // we have input for running
                 // must exit the stationary state
                 characterState = CharacterState.RUNNING;
+                //Debug.Log("stationary to run");
                 anim.SetTrigger("RunningState");
                 // notice we can swap into and then out of running state if horizontal and jump
                 // input, this means the character will jump rather than start running from
@@ -900,6 +914,11 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
     void RunningState()
     {
+        if (!anim.GetCurrentAnimatorStateInfo(0).IsName("RunningState")) // might have to do this for every state
+        {
+            //Debug.Log("fucker");
+            anim.SetTrigger("RunningState");
+        }
         // running covers any horizontal movement, so check speed to do a long jump
         if (!isGrounded)
         {
@@ -973,11 +992,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         // also since in long jump we dont want to change the character's rotation
         universalMovementVector.y += gravityIncrement;
         universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
-
-        if (isGrounded)
+        if(universalMovementVector.y <= 0.0f)
         {
-            characterState = CharacterState.RUNNING;
-            anim.SetTrigger("RunningState");
+            fallingWithInput = false;
+            characterState = CharacterState.FALLING;
         }
     }
 
@@ -1008,7 +1026,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             characterState = CharacterState.GROUND_POUND;
             anim.SetTrigger("GroundPound");
-            universalMovementVector.y = 0;
+            universalMovementVector = Vector3.zero;
         }
     }
 
@@ -1046,7 +1064,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         {
             characterState = CharacterState.GROUND_POUND;
             anim.SetTrigger("GroundPound");
-            universalMovementVector.y = 0;
+            universalMovementVector = Vector3.zero;
         }
     }
 
@@ -1054,23 +1072,39 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
     {
         if (isGrounded)
         {
-            characterState = CharacterState.RUNNING; // see if stationary is more appropriate
-            anim.SetTrigger("RunningState");
+            fallingWithInput = true;
+            if (fallDamageTimer <= 0)
+            {
+                // the player must take fall damage
+                Debug.Log("squished");
+                characterState = CharacterState.INJURY_SQUISH;
+                anim.SetTrigger("InjurySquishUpright");
+                universalMovementVector = Vector3.zero;
+            }
+            else
+            {
+                characterState = CharacterState.RUNNING; // see if stationary is more appropriate
+                anim.SetTrigger("RunningState");
+            }
+            fallDamageTimer = fallDamageTime;
         }
         else
         {
-            if (input.magnitude > 0)
+            fallDamageTimer--;
+            if (fallingWithInput)
             {
-                float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
-                transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
+                if (input.magnitude > 0)
+                {
+                    float targetRotation = Mathf.Atan2(input.x, input.y) * Mathf.Rad2Deg + cameraT.eulerAngles.y;
+                    transform.eulerAngles = Vector3.up * Mathf.SmoothDampAngle(transform.eulerAngles.y, targetRotation, ref turnSmoothVelocity, turnSmoothTime);
+                }
+
+                float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
+                currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
+
+                universalMovementVector.x = transform.forward.x * currentSpeed;
+                universalMovementVector.z = transform.forward.z * currentSpeed;
             }
-
-            float targetSpeed = ((running || speedUp > 0) ? runSpeed : walkSpeed) * input.magnitude;
-            currentSpeed = Mathf.SmoothDamp(currentSpeed, targetSpeed, ref speedSmoothVelocity, JumpingSpeedSmoothTime);
-
-            universalMovementVector.x = transform.forward.x * currentSpeed;
-            universalMovementVector.z = transform.forward.z * currentSpeed;
-
 
             universalMovementVector.y += gravityIncrement;
             universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
@@ -1079,7 +1113,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             {
                 characterState = CharacterState.GROUND_POUND;
                 anim.SetTrigger("GroundPound");
-                universalMovementVector.y = 0;
+                universalMovementVector = Vector3.zero;
             }
         }
     }
@@ -1242,7 +1276,16 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             if (input != Vector2.zero)
             {
                 // input being made
-                if (input.y >= 0.95f)
+                Vector2 tempInput = input;
+                Vector3 direction = transform.position - cameraT.position;
+                if(Vector2.Dot(new Vector2(transform.forward.x, transform.forward.z), new Vector2(direction.x, direction.z)) < 0)
+                {
+                    // we need to use reverse input for this task
+                    tempInput *= -1;
+                }
+
+
+                if (tempInput.y >= 0.95f)
                 {
                     // climb up
                     // must check if a wide enough floor is available to climb up to (use forward ray cast and only if
@@ -1261,7 +1304,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                         climbStateTimer = climbStateTime;
                     }
                 }
-                else if (input.x >= 0.95f)
+                else if (tempInput.x >= 0.95f)
                 {
                     // move right
                     // first check if more edge is available
@@ -1275,7 +1318,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                         }
                     }
                 }
-                else if (input.x <= -0.95f)
+                else if (tempInput.x <= -0.95f)
                 {
                     // move left
                     RaycastHit moveLeft;
@@ -1288,7 +1331,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                         }
                     }
                 }
-                else if (input.y <= -0.95f)
+                else if (tempInput.y <= -0.95f)
                 {
                     // let go
                     characterState = CharacterState.FALLING;
@@ -1376,8 +1419,14 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
 
 
 
-
-        anim.SetFloat("speed", currentSpeed / runSpeed);
+        if (isGrounded)
+        {
+            anim.SetFloat("speed", currentSpeed / runSpeed);
+        }
+        else
+        {
+            anim.SetFloat("speed", 0.0f);
+        }
     }
 
     void PoleGrabbingState()
@@ -1400,6 +1449,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             // input being made
             if (inputRaw.y >= 0.5f)
             {
+                anim.SetFloat("speed", 1.0f);
                 // climb up
                 // must check if more pole is available
                 RaycastHit allowedToClimb;
@@ -1418,6 +1468,7 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
             }
             else if (inputRaw.y <= -0.5f)
             {
+                anim.SetFloat("speed", 0f);
                 // climb down
                 // first check if more pole is available
                 RaycastHit allowedToSlide;
@@ -1461,6 +1512,10 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 // rotate about the pole clockwise from the top
                 transform.RotateAround(transform.position, new Vector3(0, 1, 0), poleRotateSpeed);
             }
+        }
+        else
+        {
+            anim.SetFloat("speed", 0f);
         }
 
         if (jump > 0)
@@ -1511,6 +1566,34 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
                 characterState = CharacterState.FALLING_NO_CONTROL;
                 anim.SetTrigger("FallingNoControl");
             }
+        }
+    }
+
+    void InjurySquishedState()
+    {
+        // we have no control in this state, only obey gravity, and when timer runs out check for grounded
+        // if so then go to stationary, else go to falling no control
+        universalMovementVector.y += gravityIncrement;
+        universalMovementVector.y = Mathf.Max(universalMovementVector.y, maxFallVelocity);
+
+        if (injurySquishTimer <= 0)
+        {
+            injurySquishTimer = injurySquishTime;
+            // we are done being squished
+            if (isGrounded)
+            {
+                characterState = CharacterState.STATIONARY;
+                anim.SetTrigger("StationaryState");
+            }
+            else
+            {
+                characterState = CharacterState.FALLING_NO_CONTROL;
+                anim.SetTrigger("FallingNoControl");
+            }
+        }
+        else
+        {
+            injurySquishTimer--;
         }
     }
 
@@ -1590,15 +1673,17 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         EDGE_GRAB_HANG,
         EDGE_GRAB_CLIMB,
         POLE_GRABBING,
-        INJURY_KNOCKBACK
+        INJURY_KNOCKBACK,
+        INJURY_SQUISH
         // a function is called to set this value and must clean up a few values before forcing a no input senario
 
     }
 
-    public void SwitchToNoInput()
+    public void AcceptInput(bool accepted)
     {
         // this function is called when we need to deactivate inputs,
         // must clean up a few things before setting the state to no inputs
+        InputAccepted = accepted;
     }
 
     public void PoleDetected(Vector3 polePosition, float poleThickness, float poleHeight)
@@ -1639,27 +1724,52 @@ public class UpdatedCharacterControllerScript : MonoBehaviour
         if (characterState == CharacterState.SWIMMING /*|| characterState == CharacterState.SWIMMING_STROKE_FORWARD || characterState == CharacterState.SWIMMING_STROKE_UP*/)
         {
             characterState = CharacterState.RUNNING;
+            //Debug.Log("swim to run");
             anim.SetTrigger("RunningState");
         }
     }
 
-    public void InjureCharacter(int damage, Vector3 point)
+    public void InjureCharacter(AttackData data/*int damage, Vector3 point, bool minor*/)
     {
         // this function is called upon triggering an event that harms the player
         if (characterState != CharacterState.INJURY_KNOCKBACK)
         {
             characterState = CharacterState.INJURY_KNOCKBACK;
-            anim.SetTrigger("InjuryKnockbackNoControl");
-            Vector3 direction = (transform.position - point).normalized;
+
+            //AttackData data = (AttackData)
+
+
+            if (data.minor)
+            {
+                anim.SetTrigger("InjuryKnockbackMinor");
+            }
+            else
+            {
+                anim.SetTrigger("InjuryKnockbackMajor");
+            }
+
+            Vector3 direction = (transform.position - data.point).normalized;
             //transform.forward = direction;
             universalMovementVector = direction * explosionKnockBackVelocity;
             injuryKnockbackTimer = 0;
-            if (playerStats.UpdatePlayerHealth_IsDead(damage))
+            if (playerStats.UpdatePlayerHealth_IsDead(data.damage))
             {
                 // player is dead call for a scene transition to exit back to a default scene
                 Debug.Log("player is Dead");
                 InputAccepted = false;
             }
+        }
+    }
+
+    public bool IsStationary()
+    {
+        if(characterState == CharacterState.STATIONARY)
+        {
+            return true;
+        }
+        else
+        {
+            return false;
         }
     }
 

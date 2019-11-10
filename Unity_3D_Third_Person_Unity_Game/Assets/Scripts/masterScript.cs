@@ -24,6 +24,7 @@ public class masterScript : MonoBehaviour
     }
 
 	public void InjurePlayer(int damage){
-        player.GetComponent<UpdatedCharacterControllerScript>().InjureCharacter(damage, player.transform.position - new Vector3(0, 1, 0));
-	}
+        //player.GetComponent<UpdatedCharacterControllerScript>().InjureCharacter(damage, player.transform.position - new Vector3(0, 1, 0), false);
+        player.SendMessage("InjureCharacter", new AttackData(damage, transform.position - new Vector3(0, 1, 0), false));
+    }
 }
