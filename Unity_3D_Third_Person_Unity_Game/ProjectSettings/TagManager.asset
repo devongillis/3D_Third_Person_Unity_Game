@@ -10,6 +10,7 @@ TagManager:
   - notEdge
   - pole
   - noFriction
+  - Punchable
   layers:
   - Default
   - TransparentFX
@@ -20,7 +21,7 @@ TagManager:
   - 
   - 
   - pole
-  - 
+  - player
   - 
   - 
   - 
